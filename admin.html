@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - PS Rental</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .admin-layout { display: flex; gap: 20px; }
+        .sidebar { width: 200px; background: white; padding: 20px; border-radius: 12px; }
+        .sidebar button { display: block; width: 100%; margin-bottom: 10px; }
+        .main-content { flex: 1; background: white; padding: 20px; border-radius: 12px; }
+    </style>
+</head>
+<body style="background: #e2e8f0;">
+    <div class="container" style="max-width: 1200px; margin-top: 20px;">
+        <div id="loginSection" class="section active" style="max-width: 400px; margin: 50px auto;">
+            <h2 style="text-align: center;">Login Admin</h2>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group"><label>Email</label><input type="email" id="adminEmail" required></div>
+                <div class="form-group"><label>Password</label><input type="password" id="adminPass" required></div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+        </div>
+
+        <div id="dashboardSection" class="section admin-layout" style="display: none;">
+            <div class="sidebar">
+                <h3>Admin Panel</h3>
+                <br>
+                <button class="btn" onclick="loadAdminData()">🔄 Refresh Data</button>
+                <button class="btn btn-danger" onclick="handleLogout()">Logout</button>
+            </div>
+            <div class="main-content">
+                <h2>Data Semua Reservasi</h2>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Booking</th><th>Nama</th><th>HP</th><th>Unit</th><th>Waktu</th><th>Total (Rp)</th><th>Status</th><th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

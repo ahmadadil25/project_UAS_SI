@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PS Rental Reservation</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Rental PS Reservasi</h1>
+            <p>Pesan jadwal bermain dengan mudah dan cepat</p>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="btn btn-primary" onclick="showSection('home')">Pesan Jadwal</button>
+            <button class="btn" onclick="showSection('check')">Cek / Batal Reservasi</button>
+        </div>
+
+        <div id="home" class="section active">
+            <h2>Formulir Reservasi</h2>
+            <form id="reservationForm" onsubmit="handleReservation(event)">
+                
+                <div class="form-group">
+                    <label>Pilih Unit PS (Klik kotak untuk melihat detail jadwal)</label>
+                    <div class="unit-grid" id="unitContainer">
+                        </div>
+                    <input type="hidden" id="selectedUnitId" required>
+                    <input type="hidden" id="selectedUnitPrice">
+                </div>
+
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="custName" required placeholder="Masukkan nama Anda">
+                </div>
+                
+                <div class="form-group">
+                    <label>Nomor HP (WhatsApp)</label>
+                    <input type="number" id="custPhone" required placeholder="08123456789">
+                </div>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Tanggal Bermain</label>
+                        <input type="date" id="playDate" required>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Jam Mulai</label>
+                        <input type="time" id="startTime" required>
+                    </div>
+
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Durasi (Jam)</label>
+                        <select id="duration" required onchange="calculatePrice()">
+                            <option value="1">1 Jam</option>
+                            <option value="2">2 Jam</option>
+                            <option value="3">3 Jam</option>
+                            <option value="4">4 Jam</option>
+                            <option value="5">5 Jam</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="text-align: right; background: #eff6ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h3 id="totalPriceDisplay" style="margin: 0; color: var(--primary);">Total Tagihan: Rp 0</h3>
+                    <p id="creditAvailableDisplay" style="color: var(--success); font-weight: bold; display: none; margin-top: 5px;"></p>
+                </div>
+
+                <button type="submit" id="btnSubmitForm" class="btn btn-primary" style="width: 100%; font-size: 18px; padding: 15px;">Lanjut Pembayaran</button>
+            </form>
+        </div>
+
+        <div id="payment" class="section">
+            <h2 style="text-align: center;">Pembayaran QRIS</h2>
+            <div class="qris-box">
+                <div style="width: 200px; height: 200px; background: #e2e8f0; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; border: 2px dashed #94a3b8;">SCAN QRIS</div>
+                <h3>Total: <span id="qrisAmount" style="color: var(--primary);">Rp 0</span></h3>
+                <p>Kode Booking: <strong id="qrisBookingCode"></strong></p><br>
+                <button class="btn btn-success" style="width: 100%; padding: 15px;" onclick="confirmPayment()">Saya Sudah Bayar</button>
+            </div>
+        </div>
+
+        <div id="success" class="section" style="text-align: center; padding: 50px 20px;">
+            <h1 style="font-size: 60px; margin: 0;">✅</h1>
+            <h2>Reservasi Berhasil!</h2>
+            <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; display: inline-block; margin: 20px 0;">
+                <h1 style="color: var(--primary); margin: 0;" id="finalBookingCode"></h1>
+            </div>
+            <br><button class="btn" onclick="location.reload()">Kembali ke Beranda</button>
+        </div>
+
+        <div id="check" class="section">
+            <h2>Cek Status Reservasi</h2>
+            <div class="form-group"><input type="number" id="checkPhone" placeholder="08123..."></div>
+            <button class="btn btn-primary" onclick="checkReservation()">Cek Sekarang</button>
+            <div id="checkResult" style="margin-top: 20px; overflow-x: auto;"></div>
+        </div>
+    </div>
+
+    <div id="scheduleModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Detail Jadwal</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-light); margin-bottom: 10px;">Daftar jam yang sudah dipesan pada tanggal ini:</p>
+                <ul id="modalList" style="margin-bottom: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+                    </ul>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeModal()">Tutup & Lanjut Pesan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/supabase.js"></script>
+    <script src="js/customer.js"></script>
+</body>
+</html>

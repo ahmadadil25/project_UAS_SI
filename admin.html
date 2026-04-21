@@ -41,18 +41,22 @@
     </div>
 
     <div id="dashboardSection" class="admin-layout" style="display: none;">
+        
         <div class="sidebar">
             <h3>Vortex Admin</h3>
             <button class="nav-btn active" id="btn-dash" onclick="switchTab('dashboardTab', 'btn-dash')">📊 Dashboard</button>
             <button class="nav-btn" id="btn-res" onclick="switchTab('reservasiTab', 'btn-res')">📅 Data Reservasi</button>
             <button class="nav-btn" id="btn-walkin" onclick="switchTab('walkinTab', 'btn-walkin')">➕ Tambah Walk-in</button>
             <button class="nav-btn" id="btn-kredit" onclick="switchTab('kreditTab', 'btn-kredit')">💳 Saldo Kredit</button>
+            <button class="nav-btn" id="btn-laporan" onclick="switchTab('laporanTab', 'btn-laporan')">📄 Laporan Keuangan</button>
+            
             <hr style="margin: 25px 0; border: 0; border-top: 1px solid var(--border);">
             <button class="btn btn-success" style="width: 100%;" onclick="cetakLaporanHarian()">🖨️ Cetak Pendapatan</button>
             <button class="btn btn-danger" onclick="handleLogout()" style="width: 100%; margin-top: 50px;">Logout</button>
         </div>
         
         <div class="main-content">
+            
             <div id="dashboardTab" class="admin-tab">
                 <h2 style="margin-bottom: 25px;">Statistik Hari Ini</h2>
                 <div class="dashboard-cards">
@@ -80,35 +84,39 @@
                 
                 <form id="walkinForm" onsubmit="handleWalkinReservation(event)">
                     <div class="form-group">
+                        <label>Nama Lengkap</label>
+                        <input type="text" id="custName" required placeholder="Nama pelanggan">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Nomor HP (WhatsApp)</label>
+                        <input type="number" id="custPhone" required placeholder="0812...">
+                    </div>
+
+                    <div class="form-group">
                         <label>Pilih Unit PS</label>
                         <div class="unit-grid" id="walkinUnitContainer"></div>
                         <input type="hidden" id="selectedUnitId">
                         <input type="hidden" id="selectedUnitPrice">
                     </div>
 
-                    <div class="form-group">
-                        <label>Nama Lengkap</label>
-                        <input type="text" id="custName" required placeholder="Nama pelanggan">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Nomor HP</label>
-                        <input type="number" id="custPhone" required placeholder="0812...">
-                    </div>
-                    
                     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Tanggal</label>
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
+                            <label>Tanggal Bermain</label>
                             <input type="date" id="playDate" required>
                         </div>
-                        <div class="form-group" style="flex: 1;">
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
                             <label>Jam Mulai</label>
                             <input type="time" id="startTime" required>
                         </div>
-                        <div class="form-group" style="flex: 1;">
+                        <div class="form-group" style="flex: 1; min-width: 150px;">
                             <label>Durasi (Jam)</label>
                             <select id="duration" onchange="calculateWalkinPrice()">
-                                <option value="1">1 Jam</option><option value="2">2 Jam</option><option value="3">3 Jam</option>
+                                <option value="1">1 Jam</option>
+                                <option value="2">2 Jam</option>
+                                <option value="3">3 Jam</option>
+                                <option value="4">4 Jam</option>
+                                <option value="5">5 Jam</option>
                             </select>
                         </div>
                     </div>
@@ -130,12 +138,25 @@
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div id="printArea" style="display: none;"></div>
+            <div id="laporanTab" class="admin-tab" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Riwayat & Laporan Harian</h2>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label for="filterDate" style="margin: 0;">Pilih Tanggal:</label>
+                        <input type="date" id="filterDate" onchange="loadLaporanByDate()" style="padding: 8px; border-radius: 5px; border: 1px solid var(--border);">
+                    </div>
+                </div>
+                
+                <div id="laporanContainer" style="overflow-x: auto; margin-bottom: 20px; background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
+                    </div>
+                
+                <button class="btn btn-success" style="width: 100%; padding: 15px; font-size: 16px;" onclick="printLaporan()">🖨️ Cetak Laporan Ini</button>
+            </div>
+
+        </div> </div> <div id="printArea" style="display: none;"></div>
 
     <script src="js/supabase.js"></script>
-    <script src="js/admin.js"></script>
+    <script type="module" src="js/admin.js"></script>
 </body>
 </html>

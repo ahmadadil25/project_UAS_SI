@@ -1,8 +1,8 @@
 let unitsData = [];
 let currentBookingsData = [];
-let currentReservationId = null;
 let currentTotal = 0;
 let userCredit = 0; 
+let tempReservationData = null; // Variabel baru untuk menyimpan data sementara sebelum dibayar
 
 function showSection(id) {
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
@@ -26,9 +26,8 @@ async function loadUnits() {
 
     if(unitsData.length > 0) {
         const firstUnitCard = document.getElementById(`card-${unitsData[0].id}`);
-        selectUnit(unitsData[0], firstUnitCard, false); // false = jangan pop-up di awal load
+        selectUnit(unitsData[0], firstUnitCard, false);
     }
-
     checkUnitStatuses();
 }
 
@@ -39,7 +38,7 @@ function renderUnits() {
         const div = document.createElement('div');
         div.className = 'unit-card';
         div.id = `card-${unit.id}`;
-        div.onclick = () => selectUnit(unit, div, true); // true = munculkan pop up saat diklik
+        div.onclick = () => selectUnit(unit, div, true);
         
         div.innerHTML = `
             <div>
@@ -54,7 +53,6 @@ function renderUnits() {
     });
 }
 
-// Fungsi ketika unit diklik
 function selectUnit(unit, el, showPopup = false) {
     document.querySelectorAll('.unit-card').forEach(card => card.classList.remove('selected'));
     if(el) el.classList.add('selected');
@@ -63,15 +61,9 @@ function selectUnit(unit, el, showPopup = false) {
     document.getElementById('selectedUnitPrice').value = unit.price_per_hour;
     calculatePrice();
 
-    // Munculkan Pop-up jika ditekan oleh pelanggan
-    if (showPopup) {
-        openModal(unit);
-    }
+    if (showPopup) openModal(unit);
 }
 
-// ==========================================
-// LOGIKA POP-UP MODAL
-// ==========================================
 function openModal(unit) {
     if(!unit) return;
     const modal = document.getElementById('scheduleModal');
@@ -79,8 +71,6 @@ function openModal(unit) {
     const list = document.getElementById('modalList');
     
     title.innerText = `Rincian ${unit.unit_code}`;
-    
-    // Filter booking berdasarkan unit yang diklik
     const unitBookings = currentBookingsData.filter(r => r.unit_id === unit.id);
     
     list.innerHTML = '';
@@ -91,8 +81,6 @@ function openModal(unit) {
             list.innerHTML += `<li>Terisi pada jam: <strong style="color: var(--danger);">${b.start_time.substring(0,5)} - ${b.end_time.substring(0,5)}</strong></li>`;
         });
     }
-    
-    // Tampilkan animasi pop up
     modal.style.display = 'flex';
 }
 
@@ -100,18 +88,11 @@ function closeModal() {
     document.getElementById('scheduleModal').style.display = 'none';
 }
 
-// Fitur tambahan: Klik di area luar kotak putih untuk menutup modal
 window.onclick = function(event) {
     const modal = document.getElementById('scheduleModal');
-    if (event.target === modal) {
-        closeModal();
-    }
+    if (event.target === modal) closeModal();
 }
 
-
-// ==========================================
-// STATUS CARD SINGKAT 
-// ==========================================
 async function checkUnitStatuses() {
     const playDate = document.getElementById('playDate').value;
     if(!playDate) return;
@@ -121,15 +102,16 @@ async function checkUnitStatuses() {
         if(statusDiv) statusDiv.innerHTML = `<small style="color: gray;">Memuat...</small>`;
     });
 
+    // PENTING: Hanya baca status yang benar-benar 'paid' 
     const { data, error } = await supabase
         .from('reservations')
         .select('unit_id, start_time, end_time')
         .eq('play_date', playDate)
-        .in('reservation_status', ['pending_payment', 'paid'])
+        .eq('reservation_status', 'paid')
         .order('start_time', { ascending: true });
 
     if (error) return console.error(error);
-    currentBookingsData = data; // Simpan data ke memori agar bisa dibaca modal
+    currentBookingsData = data; 
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -158,37 +140,11 @@ async function checkUnitStatuses() {
     });
 }
 
-// ==========================================
-// LOGIKA FORM & DB (Tetap Sama)
-// ==========================================
-document.getElementById('custPhone').addEventListener('blur', async (e) => {
-    const phone = e.target.value;
-    if(phone.length > 5) {
-        const { data, error } = await supabase.from('credits').select('amount').eq('phone', phone).eq('credit_status', 'unused');
-        if (error) return;
-        
-        userCredit = data.reduce((acc, curr) => acc + Number(curr.amount), 0);
-        const creditDisplay = document.getElementById('creditAvailableDisplay');
-        
-        if(userCredit > 0) {
-            creditDisplay.style.display = 'block';
-            creditDisplay.innerText = `🎁 Saldo kredit terpakai: Rp ${userCredit.toLocaleString()}`;
-        } else {
-            creditDisplay.style.display = 'none';
-        }
-        calculatePrice();
-    }
-});
-
 function calculatePrice() {
     const price = document.getElementById('selectedUnitPrice').value || 0;
     const duration = document.getElementById('duration').value || 1; 
     currentTotal = price * duration;
-    
-    let finalPay = currentTotal - userCredit;
-    if(finalPay < 0) finalPay = 0;
-
-    document.getElementById('totalPriceDisplay').innerText = `Total Tagihan: Rp ${finalPay.toLocaleString()}`;
+    document.getElementById('totalPriceDisplay').innerText = `Total Tagihan: Rp ${currentTotal.toLocaleString()}`;
 }
 
 function addHours(timeStr, hours) {
@@ -198,12 +154,15 @@ function addHours(timeStr, hours) {
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
 }
 
+// PROSES SUBMIT (TIDAK MASUK DATABASE, HANYA SIMPAN DI MEMORI)
 async function handleReservation(e) {
     e.preventDefault();
     const unitId = document.getElementById('selectedUnitId').value;
     const playDate = document.getElementById('playDate').value;
     const startTimeStr = document.getElementById('startTime').value;
     const duration = document.getElementById('duration').value;
+    const phone = document.getElementById('custPhone').value;
+    const custName = document.getElementById('custName').value;
     
     const startTime = startTimeStr.length === 5 ? startTimeStr + ":00" : startTimeStr;
     const endTime = addHours(startTime, duration);
@@ -211,55 +170,82 @@ async function handleReservation(e) {
     document.getElementById('btnSubmitForm').disabled = true;
     document.getElementById('btnSubmitForm').innerText = "Memproses...";
 
+    // Cek ketersediaan awal (siapa tau udah diisi orang lain)
     const { data: conflicts, error: conflictErr } = await supabase
         .from('reservations')
         .select('id')
         .eq('unit_id', unitId)
         .eq('play_date', playDate)
-        .in('reservation_status', ['pending_payment', 'paid'])
+        .eq('reservation_status', 'paid') 
         .lt('start_time', endTime)
         .gt('end_time', startTime);
 
-    if (conflictErr) {
-        alert("Gagal mengecek jadwal!");
-        resetBtn(); return;
-    }
-
-    if (conflicts && conflicts.length > 0) {
+    if (conflictErr || (conflicts && conflicts.length > 0)) {
         alert(`❌ MAAF! Unit pada jam tersebut sudah dipesan. Silakan cek rincian jadwal dan pilih jam lain.`);
         resetBtn(); return;
     }
 
     const bookingCode = 'PS' + Math.random().toString(36).substr(2, 5).toUpperCase();
     
-    const { data, error } = await supabase.from('reservations').insert([{
+    // SIMPAN DATA SEMENTARA DI MEMORI LOKAL (TIDAK KE SUPABASE)
+    tempReservationData = {
         booking_code: bookingCode,
-        customer_name: document.getElementById('custName').value,
-        phone: document.getElementById('custPhone').value,
+        customer_name: custName,
+        phone: phone,
         unit_id: unitId,
         play_date: playDate,
         start_time: startTime,
         end_time: endTime,
         duration_hours: duration,
         total_price: currentTotal
-    }]).select();
-
-    if (error) {
-        alert("Gagal membuat reservasi: " + error.message);
-        resetBtn(); return;
-    }
-
-    currentReservationId = data[0].id;
+    };
     
-    let finalPay = currentTotal - userCredit;
-    if(finalPay <= 0) {
-        processPayment(0, "Kredit Penuh");
+    const { data: creditData } = await supabase.from('credits').select('amount').eq('phone', phone).eq('credit_status', 'unused');
+    userCredit = creditData ? creditData.reduce((acc, curr) => acc + Number(curr.amount), 0) : 0;
+
+    const creditOpt = document.getElementById('creditOption');
+    
+    if (userCredit >= currentTotal) {
+        creditOpt.innerText = `Gunakan Saldo Kredit (Ada Rp ${userCredit.toLocaleString()})`;
+        creditOpt.disabled = false;
+    } else if (userCredit > 0) {
+        creditOpt.innerText = `Kredit Tidak Cukup (Hanya Rp ${userCredit.toLocaleString()})`;
+        creditOpt.disabled = true;
     } else {
-        document.getElementById('qrisAmount').innerText = `Rp ${finalPay.toLocaleString()}`;
-        document.getElementById('qrisBookingCode').innerText = bookingCode;
-        resetBtn();
-        showSection('payment');
+        creditOpt.innerText = `Saldo Kredit Tidak Tersedia (Rp 0)`;
+        creditOpt.disabled = true;
     }
+
+    document.getElementById('paymentMethod').value = 'qris';
+    document.getElementById('qrisBookingCode').innerText = bookingCode;
+    
+    togglePaymentView(); 
+    resetBtn();
+    showSection('payment');
+}
+
+function togglePaymentView() {
+    const method = document.getElementById('paymentMethod').value;
+    
+    document.getElementById('qrisBoxContainer').style.display = 'none';
+    document.getElementById('btnShowQris').style.display = 'none';
+    document.getElementById('btnConfirmPayment').style.display = 'none';
+
+    document.getElementById('qrisAmount').innerText = `Rp ${currentTotal.toLocaleString()}`;
+
+    if (method === 'credit') {
+        document.getElementById('btnConfirmPayment').style.display = 'block';
+        document.getElementById('btnConfirmPayment').innerText = "Konfirmasi Pakai Kredit";
+    } else {
+        document.getElementById('btnShowQris').style.display = 'block';
+        document.getElementById('btnConfirmPayment').innerText = "Saya Sudah Bayar";
+    }
+}
+
+function showQrisBox() {
+    document.getElementById('btnShowQris').style.display = 'none';
+    document.getElementById('qrisBoxContainer').style.display = 'block';
+    document.getElementById('btnConfirmPayment').style.display = 'block';
 }
 
 function resetBtn() {
@@ -268,57 +254,121 @@ function resetBtn() {
 }
 
 async function confirmPayment() {
-    let finalPay = currentTotal - userCredit;
-    await processPayment(finalPay, "QRIS");
+    const method = document.getElementById('paymentMethod').value;
+    let amountPaid = currentTotal;
+    let dbMethod = "QRIS";
+
+    if (method === 'credit') {
+        amountPaid = 0; 
+        dbMethod = "Kredit Saldo";
+    }
+    
+    await processPayment(amountPaid, dbMethod);
 }
 
-async function processPayment(amount, method) {
-    await supabase.from('payments').insert([{
-        reservation_id: currentReservationId,
-        amount: amount,
-        payment_method: method
-    }]);
+// PROSES INSERT KE DATABASE SETELAH KLIK BAYAR
+async function processPayment(amountPaid, methodInfo) {
+    document.getElementById('btnConfirmPayment').innerText = "Memproses...";
+    document.getElementById('btnConfirmPayment').disabled = true;
 
-    await supabase.from('reservations')
-        .update({ reservation_status: 'paid', payment_status: 'paid' })
-        .eq('id', currentReservationId);
+    // 1. CEK ULANG BENTROK (Siapa tau ada yang bayar duluan pas kita lagi di halaman QRIS)
+    const { data: conflicts } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('unit_id', tempReservationData.unit_id)
+        .eq('play_date', tempReservationData.play_date)
+        .eq('reservation_status', 'paid')
+        .lt('start_time', tempReservationData.end_time)
+        .gt('end_time', tempReservationData.start_time);
 
-    if(userCredit > 0) {
-        const phone = document.getElementById('custPhone').value;
-        await supabase.from('credits')
-            .update({ credit_status: 'used', used_at: new Date() })
-            .eq('phone', phone)
-            .eq('credit_status', 'unused');
+    if (conflicts && conflicts.length > 0) {
+        alert("❌ YAH KEDULUAN! Saat Anda di halaman pembayaran, jadwal ini baru saja dibayar orang lain. Silakan pilih jadwal lain.");
+        location.reload(); 
+        return;
     }
 
-    const { data } = await supabase.from('reservations').select('booking_code').eq('id', currentReservationId);
-    document.getElementById('finalBookingCode').innerText = data[0].booking_code;
+    // 2. INSERT RESERVASI KE DATABASE (Status Langsung Paid)
+    const { data: resData, error: resErr } = await supabase.from('reservations').insert([{
+        booking_code: tempReservationData.booking_code,
+        customer_name: tempReservationData.customer_name,
+        phone: tempReservationData.phone,
+        unit_id: tempReservationData.unit_id,
+        play_date: tempReservationData.play_date,
+        start_time: tempReservationData.start_time,
+        end_time: tempReservationData.end_time,
+        duration_hours: tempReservationData.duration_hours,
+        total_price: tempReservationData.total_price,
+        reservation_status: 'paid', // Langsung masuk sebagai paid
+        payment_status: 'paid'
+    }]).select();
+
+    if (resErr) {
+        alert("Gagal memproses pembayaran: " + resErr.message);
+        document.getElementById('btnConfirmPayment').disabled = false;
+        document.getElementById('btnConfirmPayment').innerText = "Coba Lagi";
+        return;
+    }
+
+    const newReservationId = resData[0].id;
+
+    // 3. INSERT DATA PEMBAYARAN
+    await supabase.from('payments').insert([{
+        reservation_id: newReservationId,
+        amount: amountPaid,
+        payment_method: methodInfo
+    }]);
+
+    // 4. POTONG SALDO KREDIT (Jika pakai opsi kredit)
+    if(document.getElementById('paymentMethod').value === 'credit') {
+        await supabase.from('credits')
+            .update({ credit_status: 'used', used_at: new Date() })
+            .eq('phone', tempReservationData.phone)
+            .eq('credit_status', 'unused');
+            
+        let remainder = userCredit - currentTotal;
+        if (remainder > 0) {
+            await supabase.from('credits').insert([{
+                phone: tempReservationData.phone,
+                amount: remainder,
+                reservation_id: newReservationId 
+            }]);
+        }
+    }
+
+    document.getElementById('finalBookingCode').innerText = tempReservationData.booking_code;
     showSection('success');
 }
 
 async function checkReservation() {
-    const phone = document.getElementById('checkPhone').value;
-    if(!phone) return alert("Nomor HP wajib diisi!");
+    const booking = document.getElementById('checkBooking').value;
+    if(!booking) return alert("Kode Booking wajib diisi!");
 
-    const { data, error } = await supabase.from('reservations').select('*, playstation_units(unit_code)').eq('phone', phone).order('created_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('reservations')
+        .select('*, playstation_units(unit_code)')
+        .eq('booking_code', booking)
+        .order('created_at', { ascending: false });
+        
     const resultDiv = document.getElementById('checkResult');
     
-    if(!data || data.length === 0) return resultDiv.innerHTML = "<p>Data tidak ditemukan. Pastikan Nomor HP benar.</p>";
+    if(!data || data.length === 0) return resultDiv.innerHTML = "<p>Data tidak ditemukan. Pastikan Kode Booking benar.</p>";
 
-    let html = '<table><tr><th>Kode</th><th>Unit</th><th>Tanggal</th><th>Jam</th><th>Status</th><th>Aksi</th></tr>';
+    let html = '<table><tr><th>Kode</th><th>Nama</th><th>No HP</th><th>Unit</th><th>Jadwal</th><th>Harga</th><th>Status</th><th>Aksi</th></tr>';
     data.forEach(r => {
         let btnStr = '';
         if(r.reservation_status === 'paid' || r.reservation_status === 'pending_payment') {
-            btnStr = `<button class="btn btn-danger" style="padding:5px;" onclick='cancelReservation(${JSON.stringify(r)})'>Batalkan</button>`;
+            btnStr = `<button class="btn btn-danger" style="padding:5px; font-size: 12px;" onclick='cancelReservation(${JSON.stringify(r)})'>Batalkan</button>`;
         }
         let statusBadge = r.reservation_status === 'paid' ? 'badge-paid' : 
                          (r.reservation_status === 'cancelled_refund' || r.reservation_status === 'converted_to_credit' ? 'badge-cancelled' : 'badge-pending');
 
         html += `<tr>
             <td><strong>${r.booking_code}</strong></td>
+            <td>${r.customer_name}</td>
+            <td>${r.phone}</td>
             <td>${r.playstation_units.unit_code}</td>
-            <td>${r.play_date}</td>
-            <td>${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</td>
+            <td><small>${r.play_date}<br>${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</small></td>
+            <td>Rp ${r.total_price.toLocaleString()}</td>
             <td><span class="badge ${statusBadge}">${r.reservation_status}</span></td>
             <td>${btnStr}</td>
         </tr>`;
@@ -328,7 +378,9 @@ async function checkReservation() {
 }
 
 async function cancelReservation(reservation) {
-    if(!confirm("Yakin ingin membatalkan reservasi ini?")) return;
+    const warningText = `Yakin ingin membatalkan reservasi ini?\n\nPERINGATAN: Jika dibatalkan kurang dari 1 jam sebelum main, data Nama dan Nomor HP Anda akan disimpan agar nominal Rp ${reservation.total_price.toLocaleString()} yang sudah dibayar bisa dipakai sebagai saldo kredit di pemesanan berikutnya.`;
+    
+    if(!confirm(warningText)) return;
 
     const playDateTime = new Date(`${reservation.play_date}T${reservation.start_time}`);
     const now = new Date();
@@ -339,10 +391,10 @@ async function cancelReservation(reservation) {
 
     if (diffHours >= 1) {
         newStatus = 'cancelled_refund';
-        message = 'Reservasi dibatalkan. Dana akan di-refund.';
+        message = 'Reservasi dibatalkan. Dana akan di-refund secara manual oleh admin.';
     } else {
         newStatus = 'converted_to_credit';
-        message = 'Dibatalkan kurang dari 1 jam. Nominal diubah menjadi saldo kredit.';
+        message = `Pembatalan dilakukan kurang dari 1 jam.\nNominal Rp ${reservation.total_price.toLocaleString()} berhasil diubah menjadi Saldo Kredit!\n\nGunakan Nama dan No HP yang sama untuk memakai saldo ini di pemesanan berikutnya.`;
         await supabase.from('credits').insert([{ reservation_id: reservation.id, phone: reservation.phone, amount: reservation.total_price }]);
     }
 
@@ -351,7 +403,6 @@ async function cancelReservation(reservation) {
     checkReservation(); 
 }
 
-// REALTIME
 supabase.channel('public:reservations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
       checkUnitStatuses();

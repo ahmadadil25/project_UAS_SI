@@ -10,10 +10,54 @@ function showSection(id) {
 }
 
 window.onload = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('playDate').value = today;
-    document.getElementById('playDate').addEventListener('change', checkUnitStatuses);
+    const dateInput = document.getElementById('playDate');
+    const timeInput = document.getElementById('startTime');
     
+    // 1. Dapatkan waktu lokal saat ini dengan aman (menghindari bug Timezone UTC)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTimeStr = `${hours}:${minutes}`;
+
+    // 2. Set default value dan batas minimum ke elemen HTML
+    if (dateInput) {
+        dateInput.value = todayStr;
+        dateInput.min = todayStr; // Kunci kalender agar tidak bisa pilih tanggal kemarin
+    }
+
+    if (timeInput) {
+        timeInput.value = currentTimeStr;
+        timeInput.min = currentTimeStr; // Kunci jam agar tidak bisa pilih jam masa lalu
+    }
+
+    // 3. Event Listener Dinamis: Cek jika tanggal diubah
+    if (dateInput && timeInput) {
+        dateInput.addEventListener('change', (e) => {
+            // Jika tanggal yang dipilih adalah hari ini
+            if (e.target.value === todayStr) {
+                timeInput.min = currentTimeStr; // Kembalikan batasan jam
+                
+                // Jika user telanjur input jam masa lalu, reset ke jam sekarang
+                if (timeInput.value < currentTimeStr) {
+                    timeInput.value = currentTimeStr;
+                }
+            } else {
+                // Jika pilih tanggal besok atau lusa, hapus batasan jam 
+                // (karena besok pagi tentu saja boleh dipesan)
+                timeInput.removeAttribute('min');
+            }
+            
+            // Panggil fungsi bawaan untuk mengecek status unit
+            checkUnitStatuses(); 
+        });
+    }
+    
+    // Load data unit dari Supabase
     await loadUnits();
 };
 

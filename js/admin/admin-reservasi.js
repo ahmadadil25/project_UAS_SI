@@ -140,8 +140,16 @@ function renderReservationTable(data) {
 }
 
 async function updateDashboardSummary(data) {
-    const todayStr = new Date().toLocaleDateString('en-CA');
-    const currentTime = new Date().toTimeString().substring(0, 5);
+    // Gunakan cara manual yang aman dari perbedaan Timezone UTC/Local
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`; // Format pasti: YYYY-MM-DD
+
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}`; // Format pasti: HH:MM
 
     let count = 0;
     let revenue = 0;
@@ -149,6 +157,7 @@ async function updateDashboardSummary(data) {
     let finishedCount = 0;
     let refundCount = 0;
     let creditCount = 0;
+    let activeUnitIds = new Set();
 
     data.forEach(r => {
         if (r.play_date === todayStr) {
@@ -158,20 +167,18 @@ async function updateDashboardSummary(data) {
                 revenue += Number(r.total_price || 0);
             }
 
-            if (r.reservation_status === 'pending_payment') {
-                pendingCount++;
-            }
+            if (r.reservation_status === 'pending_payment') pendingCount++;
+            if (r.reservation_status === 'finished') finishedCount++;
+            if (r.reservation_status === 'cancelled_refund') refundCount++;
+            if (r.reservation_status === 'converted_to_credit') creditCount++;
 
-            if (r.reservation_status === 'finished') {
-                finishedCount++;
-            }
-
-            if (r.reservation_status === 'cancelled_refund') {
-                refundCount++;
-            }
-
-            if (r.reservation_status === 'converted_to_credit') {
-                creditCount++;
+            // Cek unit yang aktif saat ini tanpa hit query lagi
+            if (r.reservation_status === 'paid') {
+                const start = String(r.start_time || '').substring(0, 5);
+                const end = String(r.end_time || '').substring(0, 5);
+                if (currentTime >= start && currentTime < end) {
+                    activeUnitIds.add(r.unit_id);
+                }
             }
         }
     });
@@ -190,52 +197,30 @@ async function updateDashboardSummary(data) {
     if (todayRefundCount) todayRefundCount.innerText = refundCount;
     if (todayCreditCount) todayCreditCount.innerText = creditCount;
 
-    await updateUnitDashboardSummary(todayStr, currentTime);
+    // Kirim jumlah unit terpakai langsung ke fungsi unit
+    await updateUnitDashboardSummary(activeUnitIds.size);
 }
 
-async function updateUnitDashboardSummary(todayStr, currentTime) {
+async function updateUnitDashboardSummary(activeCount) {
     const totalUnitCount = document.getElementById('totalUnitCount');
     const activeUnitCount = document.getElementById('activeUnitCount');
 
     try {
+        // Ambil total master unit saja
         const { data: units, error: unitError } = await supabase
             .from('playstation_units')
             .select('id');
 
-        if (unitError) {
-            console.error(unitError);
-            return;
-        }
-
-        const { data: activeBookings, error: bookingError } = await supabase
-            .from('reservations')
-            .select('unit_id, start_time, end_time')
-            .eq('play_date', todayStr)
-            .eq('reservation_status', 'paid');
-
-        if (bookingError) {
-            console.error(bookingError);
-            return;
-        }
-
-        const activeUnitIds = new Set();
-
-        (activeBookings || []).forEach(booking => {
-            const start = String(booking.start_time || '').substring(0, 5);
-            const end = String(booking.end_time || '').substring(0, 5);
-
-            if (currentTime >= start && currentTime < end) {
-                activeUnitIds.add(booking.unit_id);
-            }
-        });
+        if (unitError) throw unitError;
 
         if (totalUnitCount) totalUnitCount.innerText = (units || []).length;
-        if (activeUnitCount) activeUnitCount.innerText = activeUnitIds.size;
+        if (activeUnitCount) activeUnitCount.innerText = activeCount; // Update dengan data yang sudah difilter
 
     } catch (err) {
         console.error(err);
     }
 }
+
 function updateReservationFilterInfo(filteredCount, totalCount) {
     const info = document.getElementById('reservationFilterInfo');
     if (!info) return;
@@ -356,7 +341,7 @@ function ensureStatusModalExists() {
             <div class="modal-body">
                 <input type="hidden" id="statusReservationId">
 
-                <div style="background: #f8fafc; border: 1px solid var(--ps-border, #e2e8f0); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                <div style="background: #f8fafc; border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
                     <p style="margin-bottom: 8px;">
                         <strong>Booking:</strong>
                         <span id="statusModalBooking">-</span>
@@ -377,7 +362,7 @@ function ensureStatusModalExists() {
 
                 <div class="form-group">
                     <label for="editReservationStatus">Pilih Status Baru</label>
-                    <select id="editReservationStatus">
+                    <select id="editReservationStatus" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                         <option value="pending_payment">Pending Payment</option>
                         <option value="paid">Paid</option>
                         <option value="finished">Finished</option>
@@ -390,7 +375,7 @@ function ensureStatusModalExists() {
                     <button
                         type="button"
                         class="btn btn-outline-gaming"
-                        style="flex: 1;"
+                        style="flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 8px;"
                         onclick="closeStatusModal()">
                         Batal
                     </button>
@@ -398,8 +383,8 @@ function ensureStatusModalExists() {
                     <button
                         type="button"
                         id="btnSaveStatus"
-                        class="btn btn-primary-gaming"
-                        style="flex: 1;"
+                        class="btn btn-primary"
+                        style="flex: 1; padding: 12px; border: none; border-radius: 8px;"
                         onclick="submitStatusChange()">
                         Simpan Perubahan
                     </button>

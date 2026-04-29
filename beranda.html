@@ -1,0 +1,1659 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PS Hub – Rental PS Reservasi</title>
+    <meta name="description" content="Pesan jadwal bermain PlayStation dengan mudah dan cepat. PS5, controller DualSense, layar 4K tersedia di PS Hub." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+                  /* ── RESET & TOKENS ─────────────────────────────────────── */
+                  *,
+                  *::before,
+                  *::after {
+                    box-sizing: border-box;
+                    margin: 0;
+                    padding: 0;
+                  }
+                  :root {
+                    --blue: #1a4fd6;
+                    --blue-dark: #0f3aad;
+                    --blue-pale: #e8effe;
+                    --white: #ffffff;
+                    --off-white: #f4f6fb;
+                    --grey-100: #f0f2f8;
+                    --grey-300: #d1d9ed;
+                    --grey-500: #8796b8;
+                    --text: #111827;
+                    --text-light: #4b5880;
+                    --green: #22c55e;
+                    --red: #ef4444;
+                    --shadow-sm: 0 2px 10px rgba(26, 79, 214, 0.08);
+                    --shadow-md: 0 8px 32px rgba(26, 79, 214, 0.14);
+                    --shadow-lg: 0 20px 60px rgba(26, 79, 214, 0.18);
+                    --radius: 12px;
+                    --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+                  }
+                  html {
+                    scroll-behavior: smooth;
+                  }
+                  body {
+                    font-family: "Poppins", sans-serif;
+                    background: var(--white);
+                    color: var(--text);
+                    overflow-x: hidden;
+                  }
+                  a {
+                    text-decoration: none;
+                    color: inherit;
+                  }
+                  img {
+                    display: block;
+                    max-width: 100%;
+                  }
+
+                  /* ── SKIP LINK (accessibility) ──────────────────────────── */
+                  .skip-link {
+                    position: absolute;
+                    top: -50px;
+                    left: 12px;
+                    background: var(--blue);
+                    color: #fff;
+                    padding: 8px 16px;
+                    border-radius: 0 0 8px 8px;
+                    font-weight: 700;
+                    font-size: 13px;
+                    z-index: 9999;
+                    transition: top var(--transition);
+                  }
+                  .skip-link:focus {
+                    top: 0;
+                  }
+
+
+
+                  /* ── HERO ───────────────────────────────────────────────── */
+                  .hero {
+                    background: linear-gradient(135deg, var(--off-white) 0%, #e4ebff 100%);
+                    padding: 80px 3%;
+                    overflow: hidden;
+                    position: relative;
+                  }
+                  .hero::before {
+                    content: "";
+                    position: absolute;
+                    width: 600px;
+                    height: 600px;
+                    background: radial-gradient(circle, rgba(26, 79, 214, 0.07) 0%, transparent 70%);
+                    top: -200px;
+                    right: -100px;
+                    pointer-events: none;
+                  }
+                  .hero-inner {
+                    max-width: 1400px;
+                    margin: 0 auto;
+                    display: grid;
+                    grid-template-columns: 1.1fr 0.9fr;
+                    align-items: center;
+                    gap: 60px;
+                  }
+                  .hero-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 7px;
+                    background: var(--blue-pale);
+                    color: var(--blue);
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 1.5px;
+                    text-transform: uppercase;
+                    padding: 6px 14px;
+                    border-radius: 999px;
+                    margin-bottom: 24px;
+                  }
+                  .hero-title {
+                    font-size: clamp(36px, 5vw, 58px);
+                    font-weight: 900;
+                    line-height: 1.1;
+                    letter-spacing: -1.5px;
+                    margin-bottom: 20px;
+                  }
+                  .hero-title .accent {
+                    color: var(--blue);
+                  }
+                  .hero-desc {
+                    font-size: 15.5px;
+                    color: var(--text-light);
+                    line-height: 1.75;
+                    max-width: 440px;
+                    margin-bottom: 36px;
+                  }
+                  .hero-actions {
+                    display: flex;
+                    gap: 14px;
+                    flex-wrap: wrap;
+                    margin-bottom: 40px;
+                  }
+                  .btn-primary {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: var(--blue);
+                    color: #fff;
+                    font-weight: 700;
+                    font-size: 14.5px;
+                    padding: 13px 28px;
+                    border-radius: var(--radius);
+                    box-shadow: 0 6px 20px rgba(26, 79, 214, 0.35);
+                    transition:
+                      background var(--transition),
+                      transform 0.15s;
+                  }
+                  .btn-primary:hover,
+                  .btn-primary:focus-visible {
+                    background: var(--blue-dark);
+                    transform: translateY(-2px);
+                    outline: none;
+                  }
+                  .btn-secondary {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: var(--white);
+                    color: var(--text);
+                    font-weight: 600;
+                    font-size: 14.5px;
+                    padding: 13px 28px;
+                    border-radius: var(--radius);
+                    border: 1.5px solid var(--grey-300);
+                    transition: border-color var(--transition);
+                  }
+                  .btn-secondary:hover,
+                  .btn-secondary:focus-visible {
+                    border-color: var(--blue);
+                    outline: none;
+                  }
+                  .hero-trust {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    font-size: 13px;
+                    color: var(--text-light);
+                  }
+                  .avatars {
+                    display: flex;
+                  }
+                  .avatars span {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    border: 2px solid var(--white);
+                    background: var(--blue-pale);
+                    margin-left: -8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 13px;
+                  }
+                  .avatars span:first-child {
+                    margin-left: 0;
+                  }
+                  .hero-visual {
+                    display: flex;
+                    justify-content: center;
+                  }
+                  .hero-img-wrap {
+                    position: relative;
+                    width: 100%;
+                    max-width: 460px;
+                  }
+                  .hero-img-bg {
+                    width: 100%;
+                    aspect-ratio: 4/3;
+                    background: linear-gradient(135deg, #1a2a5e 0%, #0f1e47 100%);
+                    border-radius: 28px;
+                    box-shadow: var(--shadow-lg);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    overflow: hidden;
+                  }
+                  .controller-svg {
+                    width: 75%;
+                    max-width: 320px;
+                    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.4));
+                    animation: float 3.5s ease-in-out infinite;
+                  }
+                  @keyframes float {
+                    0%,
+                    100% {
+                      transform: translateY(0);
+                    }
+                    50% {
+                      transform: translateY(-12px);
+                    }
+                  }
+                  .hero-card {
+                    position: absolute;
+                    bottom: -20px;
+                    left: -20px;
+                    background: var(--white);
+                    border-radius: 14px;
+                    padding: 14px 20px;
+                    box-shadow: var(--shadow-md);
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    min-width: 210px;
+                  }
+                  .hero-card-icon {
+                    width: 40px;
+                    height: 40px;
+                    background: var(--blue-pale);
+                    border-radius: 10px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    flex-shrink: 0;
+                  }
+                  .hero-card-text strong {
+                    display: block;
+                    font-size: 13.5px;
+                    font-weight: 700;
+                  }
+                  .hero-card-text span {
+                    font-size: 12px;
+                    color: var(--blue);
+                    font-weight: 600;
+                  }
+
+                  /* availability dot */
+                  .avail-dot {
+                    display: inline-block;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: var(--green);
+                    margin-right: 4px;
+                    animation: pulse-dot 2s infinite;
+                  }
+                  @keyframes pulse-dot {
+                    0%,
+                    100% {
+                      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+                    }
+                    50% {
+                      box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
+                    }
+                  }
+
+                  /* ── STATS STRIP ────────────────────────────────────────── */
+                  .stats {
+                    background: var(--blue);
+                    padding: 36px 5%;
+                  }
+                  .stats-inner {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 24px;
+                    text-align: center;
+                  }
+                  .stat-item {
+                    color: #fff;
+                  }
+                  .stat-num {
+                    font-size: clamp(28px, 3.5vw, 40px);
+                    font-weight: 900;
+                    letter-spacing: -1px;
+                  }
+                  .stat-num span {
+                    font-size: 0.55em;
+                    font-weight: 600;
+                    vertical-align: super;
+                  }
+                  .stat-lbl {
+                    font-size: 13px;
+                    opacity: 0.8;
+                    margin-top: 4px;
+                    font-weight: 500;
+                  }
+
+                  /* ── FEATURES ───────────────────────────────────────────── */
+                  .features {
+                    padding: 80px 5%;
+                    background: var(--white);
+                  }
+                  .features-inner {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                  }
+                  .section-label {
+                    text-align: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 2.5px;
+                    text-transform: uppercase;
+                    color: var(--blue);
+                    margin-bottom: 12px;
+                  }
+                  .section-title {
+                    text-align: center;
+                    font-size: clamp(26px, 3.5vw, 38px);
+                    font-weight: 800;
+                    letter-spacing: -0.8px;
+                    margin-bottom: 50px;
+                  }
+                  .cards-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 24px;
+                  }
+                  .feature-card {
+                    background: var(--off-white);
+                    border-radius: 20px;
+                    padding: 36px 30px;
+                    border: 1.5px solid transparent;
+                    transition:
+                      border-color var(--transition),
+                      box-shadow var(--transition),
+                      transform var(--transition);
+                  }
+                  .feature-card:hover {
+                    border-color: var(--blue);
+                    box-shadow: var(--shadow-md);
+                    transform: translateY(-5px);
+                  }
+                  .feature-card.featured {
+                    background: var(--blue);
+                    color: #fff;
+                  }
+                  .feature-card.featured .feature-icon {
+                    background: rgba(255, 255, 255, 0.18);
+                  }
+                  .feature-card.featured .feature-title {
+                    color: #fff;
+                  }
+                  .feature-card.featured .feature-desc {
+                    color: rgba(255, 255, 255, 0.8);
+                  }
+                  .feature-icon {
+                    width: 52px;
+                    height: 52px;
+                    background: var(--blue-pale);
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 22px;
+                    margin-bottom: 22px;
+                  }
+                  .feature-title {
+                    font-size: 18px;
+                    font-weight: 800;
+                    margin-bottom: 10px;
+                  }
+                  .feature-desc {
+                    font-size: 14px;
+                    color: var(--text-light);
+                    line-height: 1.7;
+                  }
+
+                  /* ── HOW IT WORKS ───────────────────────────────────────── */
+                  .how {
+                    padding: 80px 5%;
+                    background: var(--off-white);
+                  }
+                  .how-inner {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                  }
+                  .steps {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 24px;
+                    margin-top: 48px;
+                    position: relative;
+                  }
+                  .steps::before {
+                    content: "";
+                    position: absolute;
+                    top: 28px;
+                    left: 10%;
+                    right: 10%;
+                    height: 2px;
+                    background: var(--grey-300);
+                    z-index: 0;
+                  }
+                  .step {
+                    text-align: center;
+                    position: relative;
+                    z-index: 1;
+                  }
+                  .step-num {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 50%;
+                    background: var(--white);
+                    border: 2px solid var(--grey-300);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 20px;
+                    font-weight: 900;
+                    color: var(--blue);
+                    margin: 0 auto 20px;
+                    box-shadow: var(--shadow-sm);
+                    transition:
+                      background var(--transition),
+                      border-color var(--transition);
+                  }
+                  .step:hover .step-num {
+                    background: var(--blue);
+                    color: #fff;
+                    border-color: var(--blue);
+                  }
+                  .step-title {
+                    font-size: 15px;
+                    font-weight: 700;
+                    margin-bottom: 8px;
+                  }
+                  .step-desc {
+                    font-size: 13px;
+                    color: var(--text-light);
+                    line-height: 1.65;
+                  }
+
+                  /* ── KONSOL GRID ────────────────────────────────────────── */
+                  .konsol {
+                    padding: 80px 5%;
+                    background: var(--white);
+                  }
+                  .konsol-inner {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                  }
+                  .konsol-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 24px;
+                    margin-top: 48px;
+                  }
+                  .konsol-card {
+                    border: 1.5px solid var(--grey-300);
+                    border-radius: 20px;
+                    padding: 30px;
+                    display: flex;
+                    gap: 22px;
+                    align-items: flex-start;
+                    transition:
+                      border-color var(--transition),
+                      box-shadow var(--transition);
+                  }
+                  .konsol-card:hover {
+                    border-color: var(--blue);
+                    box-shadow: var(--shadow-md);
+                  }
+                  .konsol-emoji {
+                    font-size: 36px;
+                    flex-shrink: 0;
+                  }
+                  .konsol-name {
+                    font-size: 17px;
+                    font-weight: 800;
+                    margin-bottom: 6px;
+                  }
+                  .konsol-specs {
+                    font-size: 13px;
+                    color: var(--text-light);
+                    line-height: 1.65;
+                  }
+                  .konsol-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 5px;
+                    margin-top: 12px;
+                    font-size: 12px;
+                    font-weight: 700;
+                    padding: 4px 12px;
+                    border-radius: 999px;
+                  }
+                  .konsol-badge.available {
+                    background: #dcfce7;
+                    color: #166534;
+                  }
+                  .konsol-badge.limited {
+                    background: #fef9c3;
+                    color: #854d0e;
+                  }
+
+                  /* ── TOAST ──────────────────────────────────────────────── */
+                  #toast {
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    z-index: 8000;
+                    background: var(--text);
+                    color: #fff;
+                    font-size: 14px;
+                    font-weight: 600;
+                    padding: 14px 22px;
+                    border-radius: 12px;
+                    box-shadow: var(--shadow-lg);
+                    max-width: 320px;
+                    transform: translateY(80px);
+                    opacity: 0;
+                    transition:
+                      transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                      opacity 0.35s;
+                    pointer-events: none;
+                  }
+                  #toast.show {
+                    transform: translateY(0);
+                    opacity: 1;
+                  }
+                  #toast.success {
+                    background: #166534;
+                  }
+                  #toast.error {
+                    background: #991b1b;
+                  }
+
+                  /* ── FOOTER ─────────────────────────────────────────────── */
+                  .footer {
+                    background: var(--off-white);
+                    border-top: 1px solid var(--grey-300);
+                    padding: 36px 5%;
+                  }
+                  .footer-inner {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 20px;
+                    flex-wrap: wrap;
+                  }
+                  .footer-brand strong {
+                    font-size: 16px;
+                    font-weight: 900;
+                  }
+                  .footer-brand strong span {
+                    color: var(--blue);
+                  }
+                  .footer-brand p {
+                    font-size: 12px;
+                    color: var(--grey-500);
+                    margin-top: 3px;
+                  }
+                  .footer-nav {
+                    display: flex;
+                    gap: 6px;
+                    flex-wrap: wrap;
+                  }
+                  .footer-nav a {
+                    font-size: 13px;
+                    color: var(--text-light);
+                    padding: 5px 12px;
+                    border-radius: 7px;
+                    font-weight: 500;
+                    transition:
+                      color var(--transition),
+                      background var(--transition);
+                  }
+                  .footer-nav a:hover {
+                    color: var(--blue);
+                    background: var(--blue-pale);
+                  }
+                  .footer-share {
+                    width: 34px;
+                    height: 34px;
+                    background: var(--grey-100);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 15px;
+                    cursor: pointer;
+                    border: none;
+                    transition: background var(--transition);
+                  }
+                  .footer-share:hover {
+                    background: var(--blue-pale);
+                  }
+
+                  /* ── TEST PANEL (TDD) ───────────────────────────────────── */
+                  #test-panel {
+                  display: none !important;
+                  position: fixed;
+        bottom:0;
+        left: 0;
+        right: 0;
+        z-index: 9998;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-family: "Courier New", monospace;
+      }
+                    font-size: 13px;
+                    border-top: 2px solid #1e40af;
+                    max-height: 42px;
+                    overflow: hidden;
+                    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                  }
+                  #test-panel.expanded {
+                    max-height: 420px;
+                    overflow-y: auto;
+                  }
+                  #test-toggle {
+                    width: 100%;
+                    padding: 10px 16px;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    color: #e2e8f0;
+                    font-family: inherit;
+                    font-size: 13px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    position: sticky;
+                    top: 0;
+                    background: #0f172a;
+                    z-index: 1;
+                  }
+                  #test-toggle:hover {
+                    background: #1e2d47;
+                  }
+                  .test-results {
+                    padding: 0 16px 16px;
+                  }
+                  .test-suite {
+                    margin-bottom: 16px;
+                  }
+                  .suite-title {
+                    color: #93c5fd;
+                    font-weight: 700;
+                    margin-bottom: 6px;
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                  }
+                  .test-case {
+                    padding: 4px 0;
+                    display: flex;
+                    gap: 8px;
+                    align-items: baseline;
+                  }
+                  .test-case .icon {
+                    flex-shrink: 0;
+                  }
+                  .pass {
+                    color: #4ade80;
+                  }
+                  .fail {
+                    color: #f87171;
+                  }
+                  .test-summary {
+                    padding: 6px 16px;
+                    border-top: 1px solid #1e2d47;
+                    display: flex;
+                    gap: 20px;
+                    font-weight: 700;
+                    font-size: 12px;
+                  }
+                  .summary-pass {
+                    color: #4ade80;
+                  }
+                  .summary-fail {
+                    color: #f87171;
+                  }
+
+                  /* ── MOBILE DRAWER ──────────────────────────────────────── */
+                  .mobile-menu {
+                    display: none;
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.45);
+                    z-index: 1000;
+                  }
+                  .mobile-menu.open {
+                    display: block;
+                  }
+                  .mobile-panel {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    width: min(300px, 85vw);
+                    height: 100%;
+                    background: var(--white);
+                    padding: 30px 24px;
+                    box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
+                    transform: translateX(100%);
+                    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                  }
+                  .mobile-menu.open .mobile-panel {
+                    transform: translateX(0);
+                  }
+                  .mobile-close {
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+                    background: var(--grey-100);
+                    border: none;
+                    cursor: pointer;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    font-size: 18px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  }
+                  .mobile-links {
+                    list-style: none;
+                    margin-top: 48px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                  }
+                  .mobile-links a {
+                    display: block;
+                    padding: 13px 16px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    border-radius: 10px;
+                    transition:
+                      background var(--transition),
+                      color var(--transition);
+                  }
+                  .mobile-links a:hover {
+                    background: var(--blue-pale);
+                    color: var(--blue);
+                  }
+                  .mobile-cta {
+                    margin-top: 24px;
+                  }
+                  .mobile-cta .btn-nav {
+                    width: 100%;
+                    padding: 13px;
+                    font-size: 14.5px;
+                    border-radius: var(--radius);
+                    display: block;
+                  }
+
+                  /* ── RESPONSIVE ─────────────────────────────────────────── */
+                  @media (max-width: 1024px) {
+                    .steps::before {
+                      display: none;
+                    }
+                    .steps {
+                      grid-template-columns: repeat(2, 1fr);
+                    }
+                  }
+                  @media (max-width: 900px) {
+                    .hero-inner {
+                      grid-template-columns: 1fr;
+                      text-align: center;
+                      gap: 50px;
+                    }
+                    .hero-desc {
+                      margin: 0 auto 36px;
+                    }
+                    .hero-actions {
+                      justify-content: center;
+                    }
+                    .hero-trust {
+                      justify-content: center;
+                    }
+                    .hero-visual {
+                      order: -1;
+                    }
+                    .hero-img-wrap {
+                      max-width: 340px;
+                    }
+                    .hero-card {
+                      left: 0;
+                    }
+                    .cards-grid {
+                      grid-template-columns: 1fr;
+                      max-width: 440px;
+                      margin: 0 auto;
+                    }
+                    .stats-inner {
+                      grid-template-columns: repeat(2, 1fr);
+                    }
+                    .konsol-grid {
+                      grid-template-columns: 1fr;
+                    }
+                  }
+                  @media (max-width: 640px) {
+                    .nav-links,
+                    .btn-nav {
+                      display: none;
+                    }
+                    .hamburger {
+                      display: flex;
+                    }
+                    .hero {
+                      padding: 50px 5% 60px;
+                    }
+                    .features,
+                    .how,
+                    .konsol {
+                      padding: 60px 5%;
+                    }
+                    .footer-nav {
+                      display: none;
+                    }
+                    .steps {
+                      grid-template-columns: 1fr;
+                    }
+                  }
+
+                  /* ── CTA SECTION (BOTTOM FILLER PREMIUM) ───────────────── */
+                  .cta-section {
+                    background: linear-gradient(135deg, #1e293b, #0f172a);
+                    color: #fff;
+                    padding: 70px 5%;
+                    text-align: center;
+                    position: relative;
+                    overflow: hidden;
+                  }
+
+                  .cta-section::before {
+                    content: "";
+                    position: absolute;
+                    width: 500px;
+                    height: 500px;
+                    background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
+                    top: -200px;
+                    right: -150px;
+                  }
+
+                  .cta-inner {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    position: relative;
+                    z-index: 1;
+                  }
+
+                  .cta-inner h2 {
+                    font-size: 32px;
+                    font-weight: 800;
+                    margin-bottom: 12px;
+                  }
+
+                  .cta-inner p {
+                    font-size: 15px;
+                    color: #cbd5f5;
+                    margin-bottom: 30px;
+                  }
+
+                  .cta-actions {
+                    display: flex;
+                    justify-content: center;
+                    gap: 14px;
+                    flex-wrap: wrap;
+                    margin-bottom: 25px;
+                  }
+
+                  .cta-meta {
+                    display: flex;
+                    justify-content: center;
+                    gap: 20px;
+                    font-size: 13px;
+                    color: #94a3b8;
+                    flex-wrap: wrap;
+                  }
+    </style>
+  </head>
+  <body>
+    <!-- SKIP LINK -->
+    <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
+
+    <!-- HERO -->
+    <main id="main-content">
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="hero-inner">
+          <div class="hero-content">
+            <div class="hero-badge" aria-hidden="true">✦ Premium Gaming Experience</div>
+            <h1 class="hero-title" id="hero-heading">Rental PS<br /><span class="accent">Reservasi</span></h1>
+            <p class="hero-desc">Pesan jadwal bermain dengan mudah dan cepat. Nikmati pengalaman gaming terbaik dengan konsol terbaru dan lingkungan yang nyaman.</p>
+            <div class="hero-actions">
+              <a href="index.html" class="btn-primary" id="cta-pesan">Pesan Sekarang &rarr;</a>
+              <a href="#konsol" class="btn-secondary">Lihat Konsol</a>
+            </div>
+            <div class="hero-trust" aria-label="2.400 lebih gamer aktif telah mempercayai kami">
+              <div class="avatars" aria-hidden="true"><span>👤</span><span>👤</span><span>👤</span></div>
+              <span>Dipercaya oleh <strong>2.400+</strong> gamers aktif</span>
+            </div>
+          </div>
+
+          <div class="hero-visual" aria-hidden="true">
+            <div class="hero-img-wrap">
+              <div class="hero-img-bg">
+                <svg class="controller-svg" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" fill="none" role="img" aria-label="Ilustrasi controller PlayStation">
+                  <ellipse cx="160" cy="120" rx="120" ry="60" fill="#1e2d5a" />
+                  <ellipse cx="80" cy="155" rx="38" ry="28" fill="#172248" />
+                  <ellipse cx="240" cy="155" rx="38" ry="28" fill="#172248" />
+                  <ellipse cx="160" cy="105" rx="90" ry="30" fill="#243368" />
+                  <rect x="127" y="100" width="46" height="30" rx="6" fill="#2a3d7a" />
+                  <rect x="73" y="118" width="11" height="32" rx="4" fill="#1a2d5f" />
+                  <rect x="60" y="130" width="36" height="11" rx="4" fill="#1a2d5f" />
+                  <circle cx="245" cy="118" r="7" fill="#e74c7c" opacity=".85" />
+                  <circle cx="260" cy="132" r="7" fill="#2980b9" opacity=".85" />
+                  <circle cx="230" cy="132" r="7" fill="#27ae60" opacity=".85" />
+                  <circle cx="245" cy="146" r="7" fill="#e67e22" opacity=".85" />
+                  <rect x="138" y="108" width="14" height="7" rx="3.5" fill="#4a5f99" />
+                  <rect x="168" y="108" width="14" height="7" rx="3.5" fill="#4a5f99" />
+                  <circle cx="110" cy="148" r="16" fill="#1c2c5a" />
+                  <circle cx="110" cy="148" r="11" fill="#263d80" />
+                  <circle cx="110" cy="148" r="5" fill="#1a2d5f" />
+                  <circle cx="210" cy="148" r="16" fill="#1c2c5a" />
+                  <circle cx="210" cy="148" r="11" fill="#263d80" />
+                  <circle cx="210" cy="148" r="5" fill="#1a2d5f" />
+                  <circle cx="160" cy="88" r="10" fill="#1a3a8f" />
+                  <text x="160" y="93" text-anchor="middle" font-size="10" font-family="Arial" font-weight="900" fill="#4a7cf7">PS</text>
+                  <ellipse cx="145" cy="97" rx="40" ry="10" fill="white" opacity=".04" />
+                </svg>
+              </div>
+              <div class="hero-card" id="unit-card">
+                <div class="hero-card-icon">🎮</div>
+                <div class="hero-card-text">
+                  <strong>PlayStation 5 Console</strong>
+                  <span><span class="avail-dot" aria-hidden="true"></span>Tersedia: <span id="unit-count">4</span> Unit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATS STRIP -->
+      <section class="stats" aria-label="Statistik PS Hub">
+        <div class="stats-inner">
+          <div class="stat-item">
+            <div class="stat-num" id="stat-gamers">2,400<span>+</span></div>
+            <div class="stat-lbl">Gamers Aktif</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">4<span>unit</span></div>
+            <div class="stat-lbl">Konsol PS5</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">24<span>jam</span></div>
+            <div class="stat-lbl">Buka Setiap Hari</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">4.9<span>⭐</span></div>
+            <div class="stat-lbl">Rating Kepuasan</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section class="features" id="features" aria-labelledby="features-heading">
+        <div class="features-inner">
+          <p class="section-label">Keunggulan Kami</p>
+          <h2 class="section-title" id="features-heading">Kenapa Pilih PS Hub?</h2>
+          <div class="cards-grid">
+            <div class="feature-card">
+              <div class="feature-icon" aria-hidden="true">⏱️</div>
+              <h3 class="feature-title">Respon Cepat</h3>
+              <p class="feature-desc">Konfirmasi pesanan instan dalam hitungan menit tanpa menunggu lama. Booking langsung terkonfirmasi otomatis.</p>
+            </div>
+            <div class="feature-card featured">
+              <div class="feature-icon" aria-hidden="true">🎮</div>
+              <h3 class="feature-title">High-End Gear</h3>
+              <p class="feature-desc">Gunakan perlengkapan gaming terbaru untuk performa bermain maksimal. PS5, controller DualSense, dan layar 4K.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon" aria-hidden="true">🏆</div>
+              <h3 class="feature-title">Member Rewards</h3>
+              <p class="feature-desc">Dapatkan poin setiap reservasi dan tukarkan dengan jam bermain gratis. Makin sering main, makin banyak bonus!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="how" aria-labelledby="how-heading">
+        <div class="how-inner">
+          <p class="section-label">Cara Kerja</p>
+          <h2 class="section-title" id="how-heading">Reservasi dalam 4 Langkah</h2>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <h3 class="step-title">Pilih Tanggal</h3>
+              <p class="step-desc">Buka halaman reservasi dan tentukan tanggal & jam bermain yang kamu inginkan.</p>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <h3 class="step-title">Isi Data</h3>
+              <p class="step-desc">Masukkan nama, nomor WhatsApp, dan pilih konsol yang tersedia.</p>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <h3 class="step-title">Konfirmasi</h3>
+              <p class="step-desc">Terima kode booking unik via WhatsApp sebagai bukti reservasi kamu.</p>
+            </div>
+            <div class="step">
+              <div class="step-num">4</div>
+              <h3 class="step-title">Mainkan!</h3>
+              <p class="step-desc">Datang tepat waktu, tunjukkan kode booking, dan langsung mainkan konsolmu.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KONSOL -->
+      <section class="konsol" id="konsol" aria-labelledby="konsol-heading">
+        <div class="konsol-inner">
+          <p class="section-label">Armada Konsol</p>
+          <h2 class="section-title" id="konsol-heading">Unit yang Tersedia</h2>
+          <div class="konsol-grid" id="konsol-grid">
+            <div class="konsol-card" data-unit="PS5-1">
+              <div class="konsol-emoji" aria-hidden="true">🎮</div>
+              <div>
+                <div class="konsol-name">PlayStation 5 — Unit 1</div>
+                <div class="konsol-specs">DualSense Controller · TV 4K 55" · Headset Pulse 3D · 10 judul game terpilih</div>
+                <span class="konsol-badge available"><span class="avail-dot" aria-hidden="true"></span>Tersedia</span>
+              </div>
+            </div>
+            <div class="konsol-card" data-unit="PS5-2">
+              <div class="konsol-emoji" aria-hidden="true">🎮</div>
+              <div>
+                <div class="konsol-name">PlayStation 5 — Unit 2</div>
+                <div class="konsol-specs">DualSense Controller · TV 4K 55" · Headset Pulse 3D · 10 judul game terpilih</div>
+                <span class="konsol-badge available"><span class="avail-dot" aria-hidden="true"></span>Tersedia</span>
+              </div>
+            </div>
+            <div class="konsol-card" data-unit="PS5-3">
+              <div class="konsol-emoji" aria-hidden="true">🎮</div>
+              <div>
+                <div class="konsol-name">PlayStation 5 — Unit 3</div>
+                <div class="konsol-specs">DualSense Controller · TV 4K 48" · Headset Pulse 3D · 10 judul game terpilih</div>
+                <span class="konsol-badge limited">⚠ Terbatas</span>
+              </div>
+            </div>
+            <div class="konsol-card" data-unit="PS5-4">
+              <div class="konsol-emoji" aria-hidden="true">🎮</div>
+              <div>
+                <div class="konsol-name">PlayStation 5 — Unit 4</div>
+                <div class="konsol-specs">DualSense Controller · TV 4K 48" · Headset Pulse 3D · 10 judul game terpilih</div>
+                <span class="konsol-badge available"><span class="avail-dot" aria-hidden="true"></span>Tersedia</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BANTUAN / FAQ -->
+      <section class="features" id="bantuan" aria-labelledby="bantuan-heading">
+        <div class="features-inner">
+          <p class="section-label">Bantuan</p>
+          <h2 class="section-title" id="bantuan-heading">Pertanyaan Umum</h2>
+          <div class="cards-grid" id="faq-grid">
+            <!-- diisi JS -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="cta-section" aria-labelledby="cta-heading">
+      <div class="cta-inner">
+        <h2 id="cta-heading">Siap Main Hari Ini?</h2>
+        <p>Booking sekarang, pilih jadwalmu, dan nikmati pengalaman gaming tanpa ribet.</p>
+
+        <div class="cta-actions">
+          <a href="index.html" class="btn-primary">Reservasi Sekarang</a>
+          <a href="#konsol" class="btn-secondary">Lihat Unit</a>
+        </div>
+
+        <div class="cta-meta">
+          <span>⚡ Respon cepat</span>
+          <span>🎮 PS5 Premium</span>
+          <span>⭐ Rating 4.9</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer" role="contentinfo">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <strong>PS <span>Hub</span></strong>
+          <p>© <span id="footer-year"></span> PS Hub. All rights reserved.</p>
+        </div>
+        <button class="footer-share" id="shareBtn" title="Bagikan halaman ini" aria-label="Bagikan">&#8599;</button>
+      </div>
+    </footer>
+
+    <!-- TOAST -->
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <!-- TEST PANEL (TDD) -->
+    <div id="test-panel" role="complementary" aria-label="Test Suite TDD">
+      <button id="test-toggle" aria-expanded="false" aria-controls="test-results">
+        <span id="test-summary-inline">🧪 PS Hub Test Suite — menjalankan…</span>
+        <span aria-hidden="true" id="test-chevron">▲</span>
+      </button>
+      <div id="test-results" class="test-results" hidden></div>
+    </div>
+
+    <script>
+      /* ════════════════════════════════════════════════════════
+         UTILITIES
+      ════════════════════════════════════════════════════════ */
+      const $ = (sel, ctx = document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+      function showToast(msg, type = "") {
+        const t = $("#toast");
+        t.textContent = msg;
+        t.className = type ? `show ${type}` : "show";
+        clearTimeout(t._tid);
+        t._tid = setTimeout(() => {
+          t.className = "";
+        }, 3500);
+      }
+
+      /* ════════════════════════════════════════════════════════
+         MODULE: NavModule  — hamburger & mobile drawer
+      ════════════════════════════════════════════════════════ */
+      const NavModule = (() => {
+        let _isOpen = false;
+
+        function open() {
+          _isOpen = true;
+          $("#mobileMenu").classList.add("open");
+          $("#hamburgerBtn").setAttribute("aria-expanded", "true");
+          $("#hamburgerBtn").setAttribute("aria-label", "Tutup menu");
+        }
+        function close() {
+          _isOpen = false;
+          $("#mobileMenu").classList.remove("open");
+          $("#hamburgerBtn").setAttribute("aria-expanded", "false");
+          $("#hamburgerBtn").setAttribute("aria-label", "Buka menu");
+        }
+        function toggle() {
+          _isOpen ? close() : open();
+        }
+        function isOpen() {
+          return _isOpen;
+        }
+
+        function init() {
+          $("#hamburgerBtn").addEventListener("click", toggle);
+          $("#closeMenuBtn").addEventListener("click", close);
+          $("#mobileMenu").addEventListener("click", (e) => {
+            if (e.target === $("#mobileMenu")) close();
+          });
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && _isOpen) close();
+          });
+        }
+
+        return { init, open, close, toggle, isOpen };
+      })();
+
+      /* ════════════════════════════════════════════════════════
+         MODULE: FooterModule — tahun & share
+      ════════════════════════════════════════════════════════ */
+      const FooterModule = (() => {
+        function setYear() {
+          const el = $("#footer-year");
+          if (el) el.textContent = new Date().getFullYear();
+        }
+        function initShare() {
+          $("#shareBtn").addEventListener("click", async () => {
+            const data = { title: "PS Hub", text: "Rental PS dengan reservasi mudah!", url: location.href };
+            if (navigator.share) {
+              try {
+                await navigator.share(data);
+              } catch {
+                /* dibatalkan user */
+              }
+            } else {
+              await navigator.clipboard.writeText(location.href);
+              showToast("Link disalin ke clipboard!", "success");
+            }
+          });
+        }
+        function init() {
+          setYear();
+          initShare();
+        }
+        return { init, setYear };
+      })();
+
+      /* ════════════════════════════════════════════════════════
+         MODULE: FaqModule — render FAQ cards
+      ════════════════════════════════════════════════════════ */
+      const FAQ_DATA = [
+        {
+          q: "Berapa lama minimal sewa?",
+          a: "Minimal sewa adalah 1 jam. Kamu bisa memperpanjang di tempat selama unit masih tersedia.",
+        },
+        {
+          q: "Apakah bisa cancel reservasi?",
+          a: "Mohon pastikan jadwal sebelum melakukan booking, karena reservasi yang sudah dibuat tidak dapat dibatalkan.",
+        },
+        {
+          q: "Game apa saja yang tersedia?",
+          a: "Tersedia 10+ judul populer: FIFA, COD, Spider-Man, GTA, Mortal Kombat, dan lainnya.",
+        },
+      ];
+
+      const FaqModule = (() => {
+        function render(data = FAQ_DATA) {
+          const grid = $("#faq-grid");
+          if (!grid) return;
+          grid.innerHTML = data
+            .map(
+              ({ q, a }) => `
+            <div class="feature-card">
+              <div class="feature-icon" aria-hidden="true">❓</div>
+              <h3 class="feature-title">${escHtml(q)}</h3>
+              <p class="feature-desc">${escHtml(a)}</p>
+            </div>
+          `,
+            )
+            .join("");
+        }
+        function init() {
+          render();
+        }
+        return { init, render, FAQ_DATA };
+      })();
+
+      function escHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      /* ════════════════════════════════════════════════════════
+         MODULE: AvailabilityModule — unit count & badge update
+      ════════════════════════════════════════════════════════ */
+      const AvailabilityModule = (() => {
+        function countAvailable() {
+          return $$(".konsol-badge.available").length;
+        }
+        function syncHeroCard() {
+          const el = $("#unit-count");
+          if (el) el.textContent = countAvailable();
+        }
+        function init() {
+          syncHeroCard();
+        }
+        return { init, countAvailable, syncHeroCard };
+      })();
+
+      /* ════════════════════════════════════════════════════════
+         MODULE: StatsModule — animasi counter
+      ════════════════════════════════════════════════════════ */
+      const StatsModule = (() => {
+        function animateCounter(el, target, duration = 1200) {
+          const start = performance.now();
+          const update = (now) => {
+            const p = Math.min((now - start) / duration, 1);
+            el.dataset.current = Math.floor(p * target);
+            if (p < 1) requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+        }
+        function formatStat(el) {
+          return parseInt(el.dataset.current || "0", 10);
+        }
+        function init() {
+          /* counter animasi dipanggil saat IO */
+        }
+        return { init, animateCounter, formatStat };
+      })();
+
+      /* ════════════════════════════════════════════════════════
+         ██████████  TDD TEST RUNNER  ██████████
+         Menjalankan unit tests terhadap semua module.
+         Ikuti siklus RED → GREEN → REFACTOR.
+      ════════════════════════════════════════════════════════ */
+      const TestRunner = (() => {
+        const results = [];
+
+        function describe(suiteName, fn) {
+          results.push({ type: "suite", name: suiteName });
+          try {
+            fn();
+          } catch (e) {
+            results.push({ type: "error", name: suiteName, msg: e.message });
+          }
+        }
+
+        function it(desc, fn) {
+          try {
+            fn();
+            results.push({ type: "pass", desc });
+          } catch (e) {
+            results.push({ type: "fail", desc, msg: e.message });
+          }
+        }
+
+        function expect(actual) {
+          return {
+            toBe(expected) {
+              if (actual !== expected) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+            },
+            toEqual(expected) {
+              if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+            },
+            toBeTruthy() {
+              if (!actual) throw new Error(`Expected truthy, got ${actual}`);
+            },
+            toBeFalsy() {
+              if (actual) throw new Error(`Expected falsy, got ${actual}`);
+            },
+            toBeGreaterThan(n) {
+              if (!(actual > n)) throw new Error(`Expected ${actual} > ${n}`);
+            },
+            toContain(sub) {
+              if (!String(actual).includes(sub)) throw new Error(`Expected "${actual}" to contain "${sub}"`);
+            },
+            toMatch(regex) {
+              if (!regex.test(actual)) throw new Error(`Expected "${actual}" to match ${regex}`);
+            },
+            toBeInstanceOf(cls) {
+              if (!(actual instanceof cls)) throw new Error(`Expected instance of ${cls.name}`);
+            },
+            not: {
+              toBe(expected) {
+                if (actual === expected) throw new Error(`Expected NOT ${JSON.stringify(expected)}`);
+              },
+              toBeFalsy() {
+                if (!actual) throw new Error(`Expected NOT falsy`);
+              },
+            },
+          };
+        }
+
+        /* ── DEFINE TESTS ───────────────────────────────────── */
+        function runAll() {
+          /* 1. DOM Structure */
+          describe("DOM Structure", () => {
+            it("halaman memiliki elemen <main> dengan id main-content", () => {
+              expect($("#main-content")).toBeTruthy();
+            });
+            it("navbar ada dan sticky", () => {
+              const nav = $("nav.navbar");
+              expect(nav).toBeTruthy();
+              expect(getComputedStyle(nav).position).toBe("sticky");
+            });
+            it('terdapat heading h1 dengan teks "Rental PS"', () => {
+              const h1 = $("#hero-heading");
+              expect(h1).toBeTruthy();
+              expect(h1.textContent).toContain("Rental PS");
+            });
+            it("terdapat link skip-to-content untuk aksesibilitas", () => {
+              expect($(".skip-link")).toBeTruthy();
+            });
+            it("terdapat elemen footer dengan role contentinfo", () => {
+              expect($('footer[role="contentinfo"]')).toBeTruthy();
+            });
+            it("semua section memiliki aria-labelledby", () => {
+              const sections = $$("section[aria-labelledby]");
+              expect(sections.length).toBeGreaterThan(2);
+            });
+          });
+
+          /* 2. NavModule */
+          describe("NavModule", () => {
+            it("mobile menu awalnya tertutup", () => {
+              expect(NavModule.isOpen()).toBeFalsy();
+            });
+            it("open() membuka menu dan set aria-expanded true", () => {
+              NavModule.open();
+              expect(NavModule.isOpen()).toBeTruthy();
+              expect($("#hamburgerBtn").getAttribute("aria-expanded")).toBe("true");
+            });
+            it("close() menutup menu dan reset aria-expanded", () => {
+              NavModule.close();
+              expect(NavModule.isOpen()).toBeFalsy();
+              expect($("#hamburgerBtn").getAttribute("aria-expanded")).toBe("false");
+            });
+            it("toggle() membuka jika tutup", () => {
+              NavModule.close();
+              NavModule.toggle();
+              expect(NavModule.isOpen()).toBeTruthy();
+              NavModule.close(); // cleanup
+            });
+            it("toggle() menutup jika sudah terbuka", () => {
+              NavModule.open();
+              NavModule.toggle();
+              expect(NavModule.isOpen()).toBeFalsy();
+            });
+            it('mobile menu overlay memiliki class "open" saat dibuka', () => {
+              NavModule.open();
+              expect($("#mobileMenu").classList.contains("open")).toBeTruthy();
+              NavModule.close();
+            });
+          });
+
+          /* 3. FooterModule */
+          describe("FooterModule", () => {
+            it("tahun footer sesuai tahun saat ini", () => {
+              const year = parseInt($("#footer-year").textContent, 10);
+              expect(year).toBe(new Date().getFullYear());
+            });
+            it("tombol share ada di DOM", () => {
+              expect($("#shareBtn")).toBeTruthy();
+            });
+          });
+
+          /* 4. FaqModule */
+          describe("FaqModule", () => {
+            it("FAQ_DATA berisi minimal 3 item", () => {
+              expect(FaqModule.FAQ_DATA.length).toBeGreaterThan(2);
+            });
+            it("setiap item FAQ memiliki properti q dan a", () => {
+              FaqModule.FAQ_DATA.forEach((item) => {
+                expect(typeof item.q).toBe("string");
+                expect(typeof item.a).toBe("string");
+              });
+            });
+            it("render() menghasilkan card sejumlah data FAQ", () => {
+              FaqModule.render(FaqModule.FAQ_DATA);
+              const cards = $$("#faq-grid .feature-card");
+              expect(cards.length).toBe(FaqModule.FAQ_DATA.length);
+            });
+            it("render() dengan data kosong mengosongkan grid", () => {
+              FaqModule.render([]);
+              expect($("#faq-grid").innerHTML.trim()).toBe("");
+              FaqModule.render(); // restore
+            });
+            it("render() meng-escape karakter HTML berbahaya", () => {
+              FaqModule.render([{ q: "<b>XSS</b>", a: "aman" }]);
+              expect($("#faq-grid").innerHTML).toContain("&lt;b&gt;");
+              FaqModule.render(); // restore
+            });
+          });
+
+          /* 5. AvailabilityModule */
+          describe("AvailabilityModule", () => {
+            it("countAvailable() mengembalikan angka", () => {
+              const n = AvailabilityModule.countAvailable();
+              expect(typeof n).toBe("number");
+            });
+            it("countAvailable() >= 0", () => {
+              expect(AvailabilityModule.countAvailable()).toBeGreaterThan(-1);
+            });
+            it("hero card menampilkan jumlah unit yang tersedia", () => {
+              AvailabilityModule.syncHeroCard();
+              const displayed = parseInt($("#unit-count").textContent, 10);
+              expect(displayed).toBe(AvailabilityModule.countAvailable());
+            });
+            it("jumlah unit tersedia tidak melebihi total unit", () => {
+              const total = $$(".konsol-card").length;
+              const avail = AvailabilityModule.countAvailable();
+              expect(avail).toBeGreaterThan(-1);
+              // avail <= total (tidak bisa lebih dari total)
+              if (avail > total) throw new Error(`avail (${avail}) > total (${total})`);
+            });
+          });
+
+          /* 6. Utility: escHtml */
+          describe("Utility: escHtml()", () => {
+            it("mengubah < menjadi &lt;", () => {
+              expect(escHtml("<script>")).toContain("&lt;");
+            });
+            it("mengubah > menjadi &gt;", () => {
+              expect(escHtml("<>")).toContain("&gt;");
+            });
+            it("mengubah & menjadi &amp;", () => {
+              expect(escHtml("a&b")).toContain("&amp;");
+            });
+            it("string tanpa karakter khusus tidak berubah", () => {
+              expect(escHtml("hello world")).toBe("hello world");
+            });
+          });
+
+          /* 7. Accessibility */
+          describe("Accessibility", () => {
+            it("semua tombol memiliki aria-label atau teks visible", () => {
+              const btns = $$("button");
+              btns.forEach((btn) => {
+                const hasLabel = btn.getAttribute("aria-label") || btn.textContent.trim();
+                if (!hasLabel) throw new Error(`Button tanpa label: ${btn.outerHTML.slice(0, 60)}`);
+              });
+            });
+            it("semua gambar/SVG dekoratif memiliki aria-hidden atau alt", () => {
+              const svgs = $$("svg");
+              svgs.forEach((svg) => {
+                const ok = svg.getAttribute("aria-hidden") === "true" || svg.getAttribute("aria-label") || svg.getAttribute("role") === "img";
+                if (!ok) throw new Error(`SVG tanpa atribut aksesibilitas ditemukan`);
+              });
+            });
+            it("hamburger button memiliki aria-expanded", () => {
+              const btn = $("#hamburgerBtn");
+              expect(btn.hasAttribute("aria-expanded")).toBeTruthy();
+            });
+            it('mobile dialog memiliki role="dialog" dan aria-modal', () => {
+              const menu = $("#mobileMenu");
+              expect(menu.getAttribute("role")).toBe("dialog");
+              expect(menu.getAttribute("aria-modal")).toBe("true");
+            });
+          });
+
+          /* 8. Navigation links */
+          describe("Navigation Links", () => {
+            it('link Cek Reservasi tidak menuju "#" (dead link)', () => {
+              const links = $$('a[href="#"]');
+              // seharusnya 0 (tidak ada dead link)
+              if (links.length > 0) throw new Error(`Ditemukan ${links.length} dead link href="#"`);
+            });
+            it("link Bantuan mengarah ke #bantuan", () => {
+              const bantuanLinks = $$('a[href="#bantuan"]');
+              expect(bantuanLinks.length).toBeGreaterThan(0);
+            });
+            it("CTA utama mengarah ke index.html", () => {
+              expect($("#cta-pesan").getAttribute("href")).toBe("index.html");
+            });
+          });
+
+          /* 9. StatsModule */
+          describe("StatsModule", () => {
+            it("animateCounter() berjalan tanpa error", () => {
+              const dummy = document.createElement("div");
+              dummy.dataset.current = "0";
+              // hanya pastikan tidak throw
+              let ok = true;
+              try {
+                StatsModule.animateCounter(dummy, 100, 10);
+              } catch {
+                ok = false;
+              }
+              expect(ok).toBeTruthy();
+            });
+            it("formatStat() mengembalikan integer", () => {
+              const dummy = document.createElement("div");
+              dummy.dataset.current = "42";
+              expect(StatsModule.formatStat(dummy)).toBe(42);
+            });
+          });
+        }
+
+        /* ── RENDER RESULTS ─────────────────────────────────── */
+        function render() {
+          const container = $("#test-results");
+          const summaryEl = $("#test-summary-inline");
+          let html = "";
+          let passCount = 0,
+            failCount = 0;
+          let currentSuite = "";
+
+          results.forEach((r) => {
+            if (r.type === "suite") {
+              if (currentSuite) html += "</div>";
+              html += `<div class="test-suite"><div class="suite-title">${r.name}</div>`;
+              currentSuite = r.name;
+            } else if (r.type === "pass") {
+              passCount++;
+              html += `<div class="test-case pass"><span class="icon">✓</span><span>${r.desc}</span></div>`;
+            } else if (r.type === "fail") {
+              failCount++;
+              html += `<div class="test-case fail"><span class="icon">✗</span><span>${r.desc} — <em>${r.msg}</em></span></div>`;
+            } else if (r.type === "error") {
+              failCount++;
+              html += `<div class="test-case fail"><span class="icon">⚠</span><span>Suite error: ${r.msg}</span></div>`;
+            }
+          });
+          if (currentSuite) html += "</div>";
+          html += `<div class="test-summary">
+            <span class="summary-pass">✓ ${passCount} passed</span>
+            <span class="summary-fail">${failCount > 0 ? "✗ " + failCount + " failed" : ""}</span>
+          </div>`;
+
+          container.innerHTML = html;
+
+          const icon = failCount > 0 ? "❌" : "✅";
+          summaryEl.textContent = `${icon} Test Suite — ${passCount} passed, ${failCount} failed (${passCount + failCount} total)`;
+
+          // warna border panel
+          $("#test-panel").style.borderTopColor = failCount > 0 ? "#ef4444" : "#22c55e";
+        }
+
+        function init() {
+          runAll();
+          render();
+
+          const toggle = $("#test-toggle");
+          const panel = $("#test-panel");
+          const res = $("#test-results");
+          const chev = $("#test-chevron");
+          toggle.addEventListener("click", () => {
+            const expanded = panel.classList.toggle("expanded");
+            toggle.setAttribute("aria-expanded", expanded);
+            res.hidden = !expanded;
+            chev.textContent = expanded ? "▼" : "▲";
+          });
+        }
+
+        return { init };
+      })();
+
+      /* ════════════════════════════════════════════════════════
+         BOOT — inisialisasi semua modul
+      ════════════════════════════════════════════════════════ */
+      document.addEventListener("DOMContentLoaded", () => {
+        NavModule.init();
+        FooterModule.init();
+        FaqModule.init();
+        AvailabilityModule.init();
+        StatsModule.init();
+
+        // Jalankan TDD setelah semua modul siap
+        TestRunner.init();
+      });
+    </script>
+  </body>
+</html>

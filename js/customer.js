@@ -55,10 +55,16 @@ function renderUnits() {
 
 function selectUnit(unit, el, showPopup = false) {
     document.querySelectorAll('.unit-card').forEach(card => card.classList.remove('selected'));
-    if(el) el.classList.add('selected');
+    if(el) {
+        el.classList.add('selected');
+        // Update teks tombol unit terpilih
+        document.querySelectorAll('.uc-btn').forEach(btn => btn.innerText = "Pilih Unit Ini");
+        el.querySelector('.uc-btn').innerText = "Unit Terpilih";
+    }
     
     document.getElementById('selectedUnitId').value = unit.id;
     document.getElementById('selectedUnitPrice').value = unit.price_per_hour;
+    document.getElementById('summaryUnitCode').innerText = unit.unit_code;
     calculatePrice();
 
     if (showPopup) openModal(unit);
@@ -124,17 +130,21 @@ async function checkUnitStatuses() {
         const unitBookings = data.filter(r => r.unit_id === unit.id);
         
         if (unitBookings.length === 0) {
-            statusDiv.innerHTML = `<span class="text-success">✅ Tersedia</span>`;
+            statusDiv.className = "uc-badge badge-available";
+            statusDiv.innerText = "TERSEDIA";
         } else {
             if (playDate === todayStr) {
                 let ongoing = unitBookings.find(b => currentHourStr >= b.start_time.substring(0,5) && currentHourStr < b.end_time.substring(0,5));
                 if (ongoing) {
-                    statusDiv.innerHTML = `<span class="text-danger">🔴 Terpakai s/d ${ongoing.end_time.substring(0,5)}</span>`;
+                    statusDiv.className = "uc-badge badge-used";
+                    statusDiv.innerText = `DIPAKAI SD ${ongoing.end_time.substring(0,5)}`;
                 } else {
-                    statusDiv.innerHTML = `<span style="color: #d97706; font-weight: bold;">🟡 Ada Jadwal</span>`;
+                    statusDiv.className = "uc-badge badge-booked";
+                    statusDiv.innerText = "ADA JADWAL";
                 }
             } else {
-                statusDiv.innerHTML = `<span style="color: #d97706; font-weight: bold;">🟡 Ada Jadwal</span>`;
+                statusDiv.className = "uc-badge badge-booked";
+                statusDiv.innerText = "ADA JADWAL";
             }
         }
     });
@@ -144,7 +154,10 @@ function calculatePrice() {
     const price = document.getElementById('selectedUnitPrice').value || 0;
     const duration = document.getElementById('duration').value || 1; 
     currentTotal = price * duration;
-    document.getElementById('totalPriceDisplay').innerText = `Total Tagihan: Rp ${currentTotal.toLocaleString()}`;
+    
+    document.getElementById('summaryDuration').innerText = duration;
+    document.getElementById('summarySubtotal').innerText = `Rp ${currentTotal.toLocaleString()}`;
+    document.getElementById('totalPriceDisplay').innerText = `Rp ${currentTotal.toLocaleString()}`;
 }
 
 function addHours(timeStr, hours) {
@@ -227,19 +240,37 @@ async function handleReservation(e) {
 function togglePaymentView() {
     const method = document.getElementById('paymentMethod').value;
     
-    document.getElementById('qrisBoxContainer').style.display = 'none';
-    document.getElementById('btnShowQris').style.display = 'none';
-    document.getElementById('btnConfirmPayment').style.display = 'none';
+    // Ambil elemen dengan aman
+    const qrisBox = document.getElementById('qrisBoxContainer');
+    const btnConfirm = document.getElementById('btnConfirmPayment');
+    const btnShow = document.getElementById('btnShowQris');
 
-    document.getElementById('qrisAmount').innerText = `Rp ${currentTotal.toLocaleString()}`;
+    // Update nominal
+    const amountDisplay = document.getElementById('qrisAmount');
+    if (amountDisplay) amountDisplay.innerText = `Rp ${currentTotal.toLocaleString()}`;
 
     if (method === 'credit') {
-        document.getElementById('btnConfirmPayment').style.display = 'block';
-        document.getElementById('btnConfirmPayment').innerText = "Konfirmasi Pakai Kredit";
+        if (qrisBox) qrisBox.style.display = 'none';
+        if (btnShow) btnShow.style.display = 'none';
+        
+        if (btnConfirm) {
+            btnConfirm.style.display = 'flex';
+            btnConfirm.innerHTML = `<i data-lucide="wallet"></i> Konfirmasi Pakai Kredit`;
+            btnConfirm.className = "btn btn-primary full-width";
+        }
     } else {
-        document.getElementById('btnShowQris').style.display = 'block';
-        document.getElementById('btnConfirmPayment').innerText = "Saya Sudah Bayar";
+        if (qrisBox) qrisBox.style.display = 'flex'; 
+        if (btnShow) btnShow.style.display = 'none'; // Tombol lama sudah tidak dipakai
+        
+        if (btnConfirm) {
+            btnConfirm.style.display = 'flex';
+            btnConfirm.innerHTML = `<i data-lucide="check-circle"></i> Saya Sudah Bayar`;
+            btnConfirm.className = "btn btn-primary full-width";
+        }
     }
+    
+    // Refresh icon dari Lucide setelah mengubah innerHTML
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function showQrisBox() {
@@ -335,37 +366,80 @@ async function processPayment(amountPaid, methodInfo) {
         }
     }
 
+    const d = new Date();
+    const timeStr = d.toLocaleDateString('id-ID') + ', ' + d.toLocaleTimeString('id-ID').substring(0,5);
+    
+    document.getElementById('succMethod').innerText = methodInfo;
+    document.getElementById('succTime').innerText = timeStr;
+    document.getElementById('succTotal').innerText = `Rp ${tempReservationData.total_price.toLocaleString()}`;
+    
+    document.getElementById('succName').innerText = tempReservationData.customer_name;
+    document.getElementById('succUnit').innerText = document.getElementById('summaryUnitCode').innerText; // Ambil dari UI
+    document.getElementById('succDuration').innerText = tempReservationData.duration_hours;
+    document.getElementById('succPlayTime').innerText = `${tempReservationData.play_date}, ${tempReservationData.start_time.substring(0,5)} - ${tempReservationData.end_time.substring(0,5)}`;
+    document.getElementById('succPhone').innerText = tempReservationData.phone;
+
     document.getElementById('finalBookingCode').innerText = tempReservationData.booking_code;
     showSection('success');
 }
 
+function showPaymentFailed() {
+    // Populate data ke halaman gagal
+    document.getElementById('failBookingCode').innerText = tempReservationData ? tempReservationData.booking_code : "N/A";
+    document.getElementById('failUnitName').innerText = document.getElementById('summaryUnitCode').innerText || "PlayStation Unit";
+    document.getElementById('failDuration').innerText = tempReservationData ? tempReservationData.duration_hours : "0";
+    document.getElementById('failSubtotal').innerText = `Rp ${(currentTotal || 0).toLocaleString()}`;
+    document.getElementById('failTotal').innerText = `Rp ${(currentTotal || 0).toLocaleString()}`;
+    
+    showSection('failed');
+}
+
 async function checkReservation() {
     const booking = document.getElementById('checkBooking').value;
-    if(!booking) return alert("Kode Booking wajib diisi!");
+    const phone = document.getElementById('checkPhone').value; // Ambil input nomor HP
+
+    // Validasi: pastikan kedua field terisi
+    if(!booking || !phone) {
+        return alert("Kode Booking dan Nomor WhatsApp wajib diisi untuk verifikasi data!");
+    }
+
+    // Tampilkan loading sederhana pada tombol (opsional)
+    const resultDiv = document.getElementById('checkResult');
+    resultDiv.innerHTML = "<p class='text-center'>Mencari data...</p>";
 
     const { data, error } = await supabase
         .from('reservations')
         .select('*, playstation_units(unit_code)')
         .eq('booking_code', booking)
+        .eq('phone', phone) // Tambahkan filter verifikasi nomor HP
         .order('created_at', { ascending: false });
         
-    const resultDiv = document.getElementById('checkResult');
+    if (error) {
+        console.error(error);
+        return resultDiv.innerHTML = "<p class='text-center text-danger'>Terjadi kesalahan koneksi.</p>";
+    }
     
-    if(!data || data.length === 0) return resultDiv.innerHTML = "<p>Data tidak ditemukan. Pastikan Kode Booking benar.</p>";
+    if(!data || data.length === 0) {
+        return resultDiv.innerHTML = `
+            <div class="text-center" style="padding: 20px;">
+                <p>Data tidak ditemukan.</p>
+                <small style="color: var(--text-light);">Pastikan kombinasi Kode Booking dan Nomor HP sudah benar.</small>
+            </div>
+        `;
+    }
 
-    let html = '<table><tr><th>Kode</th><th>Nama</th><th>No HP</th><th>Unit</th><th>Jadwal</th><th>Harga</th><th>Status</th><th>Aksi</th></tr>';
+    // Render tabel hasil (Logika tabel tetap sama seperti sebelumnya)
+    let html = '<table><tr><th>Kode</th><th>Unit</th><th>Jadwal</th><th>Harga</th><th>Status</th><th>Aksi</th></tr>';
     data.forEach(r => {
         let btnStr = '';
-        if(r.reservation_status === 'paid' || r.reservation_status === 'pending_payment') {
-            btnStr = `<button class="btn btn-danger" style="padding:5px; font-size: 12px;" onclick='cancelReservation(${JSON.stringify(r)})'>Batalkan</button>`;
+        if(r.reservation_status === 'paid') {
+            btnStr = `<button class="btn-danger" onclick='cancelReservation(${JSON.stringify(r)})'>Batalkan</button>`;
         }
-        let statusBadge = r.reservation_status === 'paid' ? 'badge-paid' : 
-                         (r.reservation_status === 'cancelled_refund' || r.reservation_status === 'converted_to_credit' ? 'badge-cancelled' : 'badge-pending');
+        
+        let statusBadge = r.reservation_status === 'paid' ? 'badge-success' : 'badge-gray';
 
         html += `<tr>
             <td><strong>${r.booking_code}</strong></td>
-            <td>${r.customer_name}</td>
-            <td>${r.phone}</td>
             <td>${r.playstation_units.unit_code}</td>
             <td><small>${r.play_date}<br>${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</small></td>
             <td>Rp ${r.total_price.toLocaleString()}</td>

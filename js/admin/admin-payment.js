@@ -1,17 +1,15 @@
 // admin-payment.js
-// Berisi fungsi untuk menampilkan data pembayaran pelanggan.
-// Data diambil dari tabel payments, lalu dicocokkan dengan tabel reservations.
+// Berisi fungsi untuk menampilkan, memfilter, dan merangkum data pembayaran.
+// Versi ini dibuat kompatibel dengan ID lama dan ID baru agar filter tanggal berfungsi.
 
 async function loadPaymentData() {
     const tbody = document.getElementById('paymentTableBody');
-    const totalPaymentText = document.getElementById('totalPaymentAmount');
-    const totalPaymentCount = document.getElementById('totalPaymentCount');
 
     if (!tbody) return;
 
     tbody.innerHTML = `
         <tr>
-            <td colspan="7" style="text-align:center; padding:20px;">
+            <td colspan="7" style="text-align:center; padding:24px;">
                 Memuat data pembayaran...
             </td>
         </tr>
@@ -21,50 +19,26 @@ async function loadPaymentData() {
         const payments = await fetchPayments();
         const rows = await mergePaymentsWithReservations(payments);
 
+        if (!window.adminState) {
+            window.adminState = {};
+        }
+
         window.adminState.paymentsData = rows;
 
-        const filterDate = document.getElementById('paymentFilterDate')?.value || '';
-        const filterMethod = document.getElementById('paymentFilterMethod')?.value || 'all';
-
-        let filteredRows = rows;
-
-        if (filterDate) {
-            filteredRows = filteredRows.filter(row => {
-                const dateSource = row.payment.created_at || row.reservation?.play_date || '';
-                return formatDateOnly(dateSource) === filterDate;
-            });
-        }
-
-        if (filterMethod !== 'all') {
-            filteredRows = filteredRows.filter(row => {
-                return String(row.payment.payment_method || '').toLowerCase() === filterMethod.toLowerCase();
-            });
-        }
-
-        renderPaymentTable(filteredRows);
-
-        const totalAmount = filteredRows.reduce((sum, row) => {
-            return sum + Number(row.payment.amount || 0);
-        }, 0);
-
-        if (totalPaymentText) {
-            totalPaymentText.innerText = `Rp ${totalAmount.toLocaleString()}`;
-        }
-
-        if (totalPaymentCount) {
-            totalPaymentCount.innerText = filteredRows.length;
-        }
+        applyPaymentFilters();
 
     } catch (err) {
         console.error(err);
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:20px; color:red;">
+                <td colspan="7" style="text-align:center; padding:24px; color:red;">
                     Gagal memuat data pembayaran: ${escapeHtml(err.message)}
                 </td>
             </tr>
         `;
+
+        updatePaymentSummary([]);
     }
 }
 
@@ -74,6 +48,7 @@ async function fetchPayments() {
         .select('*')
         .order('created_at', { ascending: false });
 
+    // Fallback jika tabel payments belum punya kolom created_at
     if (result.error) {
         result = await supabase
             .from('payments')
@@ -124,6 +99,37 @@ async function mergePaymentsWithReservations(payments) {
     }));
 }
 
+function applyPaymentFilters() {
+    const allRows = window.adminState?.paymentsData || [];
+
+    // Support ID versi lama dan versi baru
+    const filterDate = getInputValue(['paymentFilterDate', 'paymentDateFilter']);
+    const filterMethod = getInputValue(['paymentFilterMethod', 'paymentMethodFilter']) || 'all';
+
+    let filteredRows = [...allRows];
+
+    if (filterDate) {
+        filteredRows = filteredRows.filter(row => {
+            const dateSource = getPaymentDateSource(row);
+            const paymentDate = formatDateOnly(dateSource);
+
+            return paymentDate === filterDate;
+        });
+    }
+
+    if (filterMethod !== 'all') {
+        filteredRows = filteredRows.filter(row => {
+            const method = String(row.payment?.payment_method || '').toLowerCase().trim();
+            const selected = String(filterMethod || '').toLowerCase().trim();
+
+            return method === selected;
+        });
+    }
+
+    renderPaymentTable(filteredRows);
+    updatePaymentSummary(filteredRows);
+}
+
 function renderPaymentTable(rows) {
     const tbody = document.getElementById('paymentTableBody');
     if (!tbody) return;
@@ -131,8 +137,8 @@ function renderPaymentTable(rows) {
     if (!rows || rows.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:20px;">
-                    Belum ada data pembayaran.
+                <td colspan="7" style="text-align:center; padding:28px;">
+                    Tidak ada data pembayaran sesuai filter.
                 </td>
             </tr>
         `;
@@ -142,57 +148,152 @@ function renderPaymentTable(rows) {
     tbody.innerHTML = '';
 
     rows.forEach(row => {
-        const payment = row.payment;
-        const reservation = row.reservation;
+        const payment = row.payment || {};
+        const reservation = row.reservation || {};
 
-        const bookingCode = reservation?.booking_code || '-';
-        const customerName = reservation?.customer_name || '-';
-        const phone = reservation?.phone || '-';
-        const unitCode = reservation?.playstation_units?.unit_code || '-';
-        const playDate = reservation?.play_date || '-';
-        const startTime = reservation?.start_time ? formatTime(paymentSafe(reservation.start_time)) : '-';
-        const endTime = reservation?.end_time ? formatTime(paymentSafe(reservation.end_time)) : '-';
-        const status = reservation?.reservation_status || '-';
+        const bookingCode = reservation.booking_code || '-';
+        const customerName = reservation.customer_name || '-';
+        const phone = reservation.phone || '-';
+        const unitCode = reservation.playstation_units?.unit_code || '-';
+        const playDate = reservation.play_date || '-';
+        const startTime = reservation.start_time ? formatTime(reservation.start_time) : '-';
+        const endTime = reservation.end_time ? formatTime(reservation.end_time) : '-';
+        const status = reservation.reservation_status || '-';
+        const method = payment.payment_method || '-';
+        const amount = Number(payment.amount || 0);
+        const tanggalBayar = getPaymentDateSource(row);
 
         tbody.innerHTML += `
             <tr>
                 <td>
-                    <strong>${escapeHtml(bookingCode)}</strong><br>
-                    <small>${escapeHtml(unitCode)}</small>
+                    <div class="payment-booking-code">
+                        ${escapeHtml(bookingCode)}
+                    </div>
+                    <div class="payment-booking-unit">
+                        ${escapeHtml(unitCode)}
+                    </div>
                 </td>
 
                 <td>
-                    ${escapeHtml(customerName)}<br>
-                    <small>${escapeHtml(phone)}</small>
+                    <div class="payment-customer-name">
+                        ${escapeHtml(customerName)}
+                    </div>
+                    <div class="payment-customer-phone">
+                        ${escapeHtml(phone)}
+                    </div>
                 </td>
 
                 <td>
-                    ${escapeHtml(playDate)}<br>
-                    <small>${escapeHtml(startTime)} - ${escapeHtml(endTime)}</small>
+                    <div class="payment-time-main">
+                        ${escapeHtml(playDate)}
+                    </div>
+                    <div class="payment-time-sub">
+                        ${escapeHtml(startTime)} - ${escapeHtml(endTime)}
+                    </div>
                 </td>
 
                 <td>
-                    <span class="badge badge-paid">
-                        ${escapeHtml(payment.payment_method || '-')}
+                    <span class="method-pill ${getMethodClass(method)}">
+                        ${escapeHtml(method)}
                     </span>
                 </td>
 
                 <td>
-                    <strong>Rp ${Number(payment.amount || 0).toLocaleString()}</strong>
+                    <div class="payment-amount">
+                        Rp ${amount.toLocaleString('id-ID')}
+                    </div>
                 </td>
 
                 <td>
-                    <span class="badge ${getPaymentReservationBadge(status)}">
+                    <span class="status-pill ${getPaymentReservationBadge(status)}">
                         ${getPaymentReservationLabel(status)}
                     </span>
                 </td>
 
                 <td>
-                    ${formatPaymentDate(payment.created_at)}
+                    <div class="payment-date">
+                        ${formatPaymentDate(tanggalBayar)}
+                    </div>
                 </td>
             </tr>
         `;
     });
+}
+
+function updatePaymentSummary(rows) {
+    const totalCount = rows.length;
+    const totalAmount = rows.reduce((sum, row) => {
+        return sum + Number(row.payment?.amount || 0);
+    }, 0);
+
+    const topMethod = getTopPaymentMethod(rows);
+
+    // Support ID versi lama
+    setTextIfExists('totalPaymentCount', totalCount);
+    setTextIfExists('totalPaymentAmount', `Rp ${totalAmount.toLocaleString('id-ID')}`);
+
+    // Support ID versi baru
+    setTextIfExists('paymentTotalCount', totalCount);
+    setTextIfExists('paymentTotalAmount', `Rp ${totalAmount.toLocaleString('id-ID')}`);
+    setTextIfExists('paymentTopMethod', topMethod);
+}
+
+function getTopPaymentMethod(rows) {
+    if (!rows || rows.length === 0) return '-';
+
+    const counter = {};
+
+    rows.forEach(row => {
+        const method = row.payment?.payment_method || '-';
+        counter[method] = (counter[method] || 0) + 1;
+    });
+
+    let topMethod = '-';
+    let topCount = 0;
+
+    Object.keys(counter).forEach(method => {
+        if (counter[method] > topCount) {
+            topCount = counter[method];
+            topMethod = method;
+        }
+    });
+
+    return topMethod;
+}
+
+function getPaymentDateSource(row) {
+    const payment = row?.payment || {};
+    const reservation = row?.reservation || {};
+
+    // Prioritas tanggal bayar:
+    // 1. created_at dari payments
+    // 2. paid_at jika ada
+    // 3. payment_date jika ada
+    // 4. created_at dari reservations sebagai fallback
+    return (
+        payment.created_at ||
+        payment.paid_at ||
+        payment.payment_date ||
+        reservation.created_at ||
+        ''
+    );
+}
+
+function getInputValue(ids) {
+    for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el) return el.value || '';
+    }
+
+    return '';
+}
+
+function setTextIfExists(id, value) {
+    const el = document.getElementById(id);
+
+    if (el) {
+        el.innerText = value;
+    }
 }
 
 function getPaymentReservationLabel(status) {
@@ -223,6 +324,18 @@ function getPaymentReservationBadge(status) {
     return 'badge-pending';
 }
 
+function getMethodClass(method) {
+    const value = String(method || '').toLowerCase();
+
+    if (value.includes('qris')) return 'qris';
+    if (value.includes('cash')) return 'cash';
+    if (value.includes('tunai')) return 'cash';
+    if (value.includes('walk')) return 'walkin';
+    if (value.includes('kredit')) return 'credit';
+
+    return '';
+}
+
 function formatPaymentDate(value) {
     if (!value) return '-';
 
@@ -244,8 +357,17 @@ function formatPaymentDate(value) {
 function formatDateOnly(value) {
     if (!value) return '';
 
-    if (String(value).length >= 10 && String(value).includes('-')) {
-        return String(value).substring(0, 10);
+    const str = String(value);
+
+    // Kalau formatnya sudah YYYY-MM-DD atau ISO dari Supabase
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const date = new Date(str);
+
+        if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('en-CA');
+        }
+
+        return str.substring(0, 10);
     }
 
     const date = new Date(value);
@@ -262,11 +384,6 @@ function formatTime(value) {
     return String(value).substring(0, 5);
 }
 
-function paymentSafe(value) {
-    if (value === null || value === undefined) return '';
-    return value;
-}
-
 function escapeHtml(value) {
     if (value === null || value === undefined) return '';
 
@@ -279,3 +396,4 @@ function escapeHtml(value) {
 }
 
 window.loadPaymentData = loadPaymentData;
+window.applyPaymentFilters = applyPaymentFilters;

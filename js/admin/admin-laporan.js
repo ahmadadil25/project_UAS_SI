@@ -1,6 +1,5 @@
 // admin-laporan.js
-// Berisi fungsi laporan harian lengkap dan cetak laporan.
-// Laporan dibuat sesuai kebutuhan laporan sistem: reservasi, transaksi, status, dan pendapatan.
+// Laporan harian dibuat full table compact agar pas saat dicetak.
 
 async function loadLaporanByDate() {
     const date = document.getElementById('filterDate')?.value;
@@ -79,9 +78,12 @@ function renderLaporan(rows, date) {
 
     if (!rows || rows.length === 0) {
         container.innerHTML = `
-            <p style="padding:20px; text-align:center;">
-                Tidak ada reservasi pada tanggal ini.
-            </p>
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:14px; padding:30px; text-align:center;">
+                <h3 style="margin-bottom:8px;">Laporan Harian Lengkap</h3>
+                <p style="margin:0; color:#64748b;">
+                    Tidak ada reservasi pada tanggal <strong>${escapeHtml(date)}</strong>.
+                </p>
+            </div>
         `;
         return;
     }
@@ -89,159 +91,161 @@ function renderLaporan(rows, date) {
     const summary = calculateLaporanSummary(rows);
 
     let html = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="margin-bottom: 5px;">Laporan Harian Lengkap</h3>
-            <p style="margin: 0; color: #64748b;">
-                Tanggal: <strong>${escapeHtml(date)}</strong>
-            </p>
-        </div>
-
-        <div class="dashboard-cards" style="margin-bottom: 20px;">
-            <div class="card">
-                <h4>Total Reservasi</h4>
-                <h2>${summary.totalReservasi}</h2>
+        <div class="laporan-print-wrapper">
+            <div style="margin-bottom: 14px;">
+                <h3 style="margin-bottom: 5px; font-size: 22px;">
+                    Laporan Harian Lengkap
+                </h3>
+                <p style="margin: 0; color: #64748b; font-size: 14px;">
+                    Tanggal: <strong>${escapeHtml(date)}</strong>
+                </p>
             </div>
 
-            <div class="card">
-                <h4>Total Pembayaran Masuk</h4>
-                <h2>Rp ${summary.totalPembayaran.toLocaleString()}</h2>
-            </div>
+            <div style="overflow-x:auto; background:white; border:1px solid #e2e8f0; border-radius:12px;">
+                <table class="laporan-table-compact"
+                    style="
+                        width:100%;
+                        border-collapse: collapse;
+                        table-layout: fixed;
+                        font-size: 12px;
+                    ">
+                    <thead>
+                        <tr style="background:#f1f5f9;">
+                            <th style="width:10%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Booking</th>
+                            <th style="width:13%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Pelanggan</th>
+                            <th style="width:10%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Unit</th>
+                            <th style="width:13%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Jadwal</th>
+                            <th style="width:7%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Durasi</th>
+                            <th style="width:10%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Status</th>
+                            <th style="width:12%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Metode</th>
+                            <th style="width:12%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Bayar</th>
+                            <th style="width:13%; padding:8px; border:1px solid #e2e8f0; text-align:left;">Total</th>
+                        </tr>
+                    </thead>
 
-            <div class="card">
-                <h4>Pendapatan Aktif</h4>
-                <h2>Rp ${summary.totalPendapatan.toLocaleString()}</h2>
-            </div>
-
-            <div class="card">
-                <h4>Pending</h4>
-                <h2>${summary.pendingCount}</h2>
-            </div>
-
-            <div class="card">
-                <h4>Paid</h4>
-                <h2>${summary.paidCount}</h2>
-            </div>
-
-            <div class="card">
-                <h4>Finished</h4>
-                <h2>${summary.finishedCount}</h2>
-            </div>
-
-            <div class="card">
-                <h4>Refund</h4>
-                <h2>${summary.refundCount}</h2>
-            </div>
-
-            <div class="card">
-                <h4>Credit</h4>
-                <h2>${summary.creditCount}</h2>
-            </div>
-        </div>
-
-        <table style="width:100%; border-collapse: collapse; margin-top: 10px;">
-            <thead>
-                <tr style="background: #f1f5f9;">
-                    <th style="padding: 10px; border: 1px solid #ddd;">Booking</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Pelanggan</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Unit</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Jadwal</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Status</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Metode Bayar</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Pembayaran</th>
-                    <th style="padding: 10px; border: 1px solid #ddd;">Total Reservasi</th>
-                </tr>
-            </thead>
-            <tbody>
+                    <tbody>
     `;
 
     rows.forEach(row => {
         const r = row.reservation;
         const p = row.payment;
 
+        const totalReservation = Number(r.total_price || 0);
+        const paymentAmount = Number(p?.amount || 0);
+
         html += `
             <tr>
-                <td style="padding: 10px; border: 1px solid #ddd;">
+                <td style="padding:8px; border:1px solid #e2e8f0; word-break:break-word;">
                     <strong>${escapeHtml(r.booking_code)}</strong>
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
-                    ${escapeHtml(r.customer_name)}<br>
-                    <small>${escapeHtml(r.phone)}</small>
+                <td style="padding:8px; border:1px solid #e2e8f0; word-break:break-word;">
+                    <strong>${escapeHtml(r.customer_name)}</strong><br>
+                    <small style="color:#64748b;">${escapeHtml(r.phone)}</small>
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
+                <td style="padding:8px; border:1px solid #e2e8f0; word-break:break-word;">
                     ${r.playstation_units ? escapeHtml(r.playstation_units.unit_code) : '-'}
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
+                <td style="padding:8px; border:1px solid #e2e8f0; word-break:break-word;">
                     ${escapeHtml(r.play_date)}<br>
-                    <small>${formatTime(r.start_time)} - ${formatTime(r.end_time)}</small>
+                    <small style="color:#64748b;">
+                        ${formatTime(r.start_time)} - ${formatTime(r.end_time)}
+                    </small>
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
-                    <span class="badge ${getLaporanStatusBadge(r.reservation_status)}">
+                <td style="padding:8px; border:1px solid #e2e8f0;">
+                    ${Number(r.duration_hours || 0)} Jam
+                </td>
+
+                <td style="padding:8px; border:1px solid #e2e8f0;">
+                    <span class="badge ${getLaporanStatusBadge(r.reservation_status)}"
+                        style="font-size:10px; padding:5px 8px; white-space:nowrap;">
                         ${getLaporanStatusLabel(r.reservation_status)}
                     </span>
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
+                <td style="padding:8px; border:1px solid #e2e8f0; word-break:break-word;">
                     ${p ? escapeHtml(p.payment_method || '-') : '-'}
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
-                    ${p ? `Rp ${Number(p.amount || 0).toLocaleString()}` : '-'}
+                <td style="padding:8px; border:1px solid #e2e8f0; white-space:nowrap;">
+                    Rp ${paymentAmount.toLocaleString('id-ID')}
                 </td>
 
-                <td style="padding: 10px; border: 1px solid #ddd;">
-                    Rp ${Number(r.total_price || 0).toLocaleString()}
+                <td style="padding:8px; border:1px solid #e2e8f0; white-space:nowrap;">
+                    Rp ${totalReservation.toLocaleString('id-ID')}
                 </td>
             </tr>
         `;
     });
 
-   html += `
-        </tbody>
+    html += `
+                    </tbody>
 
-        <tfoot>
-            <tr style="background: #eff6ff; font-weight: bold;">
-                <td colspan="6" style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    TOTAL PEMBAYARAN MASUK
-                </td>
-                <td style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    Rp ${summary.totalPembayaran.toLocaleString()}
-                </td>
-                <td style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    Rp ${summary.totalReservasiValue.toLocaleString()}
-                </td>
-            </tr>
+                    <tfoot>
+                        <tr style="background:#f8fafc; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Total Reservasi
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                ${summary.totalReservasi} Reservasi
+                            </td>
+                        </tr>
 
-            <tr style="background: #f0fdf4; font-weight: bold;">
-                <td colspan="7" style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    TOTAL PENDAPATAN AKTIF PAID + FINISHED
-                </td>
-                <td style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    Rp ${summary.totalPendapatan.toLocaleString()}
-                </td>
-            </tr>
+                        <tr style="background:#eff6ff; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Total Pembayaran Masuk
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                Rp ${summary.totalPembayaran.toLocaleString('id-ID')}
+                            </td>
+                        </tr>
 
-            <tr style="background: #fff7ed; font-weight: bold;">
-                <td colspan="7" style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    TOTAL REFUND
-                </td>
-                <td style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    Rp ${summary.totalRefund.toLocaleString()}
-                </td>
-            </tr>
+                        <tr style="background:#f0fdf4; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Total Pendapatan Aktif Paid + Finished
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                Rp ${summary.totalPendapatan.toLocaleString('id-ID')}
+                            </td>
+                        </tr>
 
-            <tr style="background: #fefce8; font-weight: bold;">
-                <td colspan="7" style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    TOTAL DIKONVERSI KE KREDIT
-                </td>
-                <td style="padding: 10px 14px; border: 1px solid #ddd; text-align: left;">
-                    Rp ${summary.totalCredit.toLocaleString()}
-                </td>
-            </tr>
-        </tfoot>
+                        <tr style="background:#fff7ed; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Total Refund
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                Rp ${summary.totalRefund.toLocaleString('id-ID')}
+                            </td>
+                        </tr>
+
+                        <tr style="background:#fefce8; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Total Dikonversi ke Kredit
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                Rp ${summary.totalCredit.toLocaleString('id-ID')}
+                            </td>
+                        </tr>
+
+                        <tr style="background:#f1f5f9; font-weight:700;">
+                            <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
+                                Ringkasan Status
+                            </td>
+                            <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
+                                Pending: ${summary.pendingCount} |
+                                Paid: ${summary.paidCount} |
+                                Finished: ${summary.finishedCount} |
+                                Refund: ${summary.refundCount} |
+                                Credit: ${summary.creditCount}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
     `;
 
     container.innerHTML = html;
@@ -309,11 +313,67 @@ function printLaporan() {
     if (!printArea) return;
 
     printArea.innerHTML = `
-        <div style="font-family: sans-serif; padding: 20px;">
-            <h2 style="text-align:center; margin-bottom: 5px;">PSHUB RENTAL</h2>
-            <h3 style="text-align:center; margin-top: 0;">Laporan Harian Reservasi dan Transaksi</h3>
-            <p>Tanggal: <strong>${escapeHtml(date)}</strong></p>
-            <hr>
+        <style>
+            @page {
+                size: A4 landscape;
+                margin: 8mm;
+            }
+
+            @media print {
+                body {
+                    background: white !important;
+                }
+
+                .laporan-print-wrapper {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                }
+
+                .laporan-print-wrapper h3 {
+                    font-size: 16px !important;
+                    margin-bottom: 4px !important;
+                }
+
+                .laporan-print-wrapper p {
+                    font-size: 11px !important;
+                    margin-bottom: 8px !important;
+                }
+
+                .laporan-table-compact {
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                    border-collapse: collapse !important;
+                    font-size: 8.5px !important;
+                }
+
+                .laporan-table-compact th,
+                .laporan-table-compact td {
+                    padding: 4px !important;
+                    line-height: 1.25 !important;
+                    word-break: break-word !important;
+                    white-space: normal !important;
+                }
+
+                .laporan-table-compact .badge,
+                .laporan-table-compact span.badge {
+                    font-size: 7.5px !important;
+                    padding: 3px 5px !important;
+                    border-radius: 999px !important;
+                    white-space: nowrap !important;
+                }
+            }
+        </style>
+
+        <div style="font-family: Arial, sans-serif; padding: 0;">
+            <h2 style="text-align:center; margin:0 0 3px; font-size:18px;">
+                PSHUB RENTAL
+            </h2>
+            <h3 style="text-align:center; margin:0 0 8px; font-size:14px;">
+                Laporan Harian Reservasi dan Transaksi
+            </h3>
+            <p style="margin:0 0 8px; font-size:11px;">
+                Tanggal: <strong>${escapeHtml(date)}</strong>
+            </p>
             ${content}
         </div>
     `;

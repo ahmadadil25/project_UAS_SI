@@ -387,12 +387,17 @@ async function processPayment(amountPaid, methodInfo) {
     const newReservationId = resData[0].id;
 
     // 3. INSERT DATA PEMBAYARAN
-    await supabase.from('payments').insert([{
-        reservation_id: newReservationId,
-        amount: amountPaid,
-        payment_method: methodInfo
-    }]);
+const { error: payErr } = await supabase.from('payments').insert([{
+    reservation_id: newReservationId,
+    amount: amountPaid,
+    payment_method: methodInfo,
+    created_at: new Date().toISOString()
+}]);
 
+if (payErr) {
+    alert("Reservasi berhasil, tetapi data pembayaran gagal disimpan: " + payErr.message);
+    return;
+}
     // 4. POTONG SALDO KREDIT (Jika pakai opsi kredit)
     if(document.getElementById('paymentMethod').value === 'credit') {
         await supabase.from('credits')

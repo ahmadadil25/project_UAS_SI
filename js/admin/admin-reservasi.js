@@ -145,13 +145,18 @@ async function updateDashboardSummary(data) {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`; // Format pasti: YYYY-MM-DD
+    const todayStr = `${year}-${month}-${day}`;
+
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}`; // Format pasti: HH:MM
+    const currentTime = `${hours}:${minutes}`;
 
     let count = 0;
+    let yesterdayCount = 0;
     let revenue = 0;
     let pendingCount = 0;
     let finishedCount = 0;
@@ -160,6 +165,10 @@ async function updateDashboardSummary(data) {
     let activeUnitIds = new Set();
 
     data.forEach(r => {
+        if (r.play_date === yesterdayStr) {
+            yesterdayCount++;
+        }
+
         if (r.play_date === todayStr) {
             count++;
 
@@ -176,8 +185,9 @@ async function updateDashboardSummary(data) {
             if (r.reservation_status === 'paid') {
                 const start = String(r.start_time || '').substring(0, 5);
                 const end = String(r.end_time || '').substring(0, 5);
+
                 if (currentTime >= start && currentTime < end) {
-                    activeUnitIds.add(r.unit_id);
+                    activeUnitIds.add(String(r.unit_id));
                 }
             }
         }
@@ -189,32 +199,73 @@ async function updateDashboardSummary(data) {
     const todayFinishedCount = document.getElementById('todayFinishedCount');
     const todayRefundCount = document.getElementById('todayRefundCount');
     const todayCreditCount = document.getElementById('todayCreditCount');
+    const todayTrendText = document.getElementById('todayTrendText');
 
     if (todayCount) todayCount.innerText = count;
-    if (todayRevenue) todayRevenue.innerText = `Rp ${revenue.toLocaleString()}`;
+    if (todayRevenue) todayRevenue.innerText = `Rp ${revenue.toLocaleString('id-ID')}`;
     if (todayPendingCount) todayPendingCount.innerText = pendingCount;
     if (todayFinishedCount) todayFinishedCount.innerText = finishedCount;
     if (todayRefundCount) todayRefundCount.innerText = refundCount;
     if (todayCreditCount) todayCreditCount.innerText = creditCount;
 
-    // Kirim jumlah unit terpakai langsung ke fungsi unit
-    await updateUnitDashboardSummary(activeUnitIds.size);
+    if (todayTrendText) {
+        const diff = count - yesterdayCount;
+
+        if (diff > 0) {
+            todayTrendText.innerText = `↗ +${diff} vs kemarin`;
+            todayTrendText.className = 'trend-positive';
+        } else if (diff < 0) {
+            todayTrendText.innerText = `↘ ${Math.abs(diff)} lebih sedikit dari kemarin`;
+            todayTrendText.className = 'trend-negative';
+        } else {
+            todayTrendText.innerText = 'Stabil dibanding kemarin';
+            todayTrendText.className = 'trend-neutral';
+        }
+    }
+
+    renderDashboardRecentReservations(data || []);
+    renderDashboardDailySchedule(data || [], todayStr, currentTime);
+
+    // Kirim daftar unit aktif agar dashboard bisa menampilkan unit tersedia.
+    await updateUnitDashboardSummary(activeUnitIds);
 }
 
-async function updateUnitDashboardSummary(activeCount) {
+async function updateUnitDashboardSummary(activeUnitIdsInput) {
     const totalUnitCount = document.getElementById('totalUnitCount');
     const activeUnitCount = document.getElementById('activeUnitCount');
+    const availableUnitCount = document.getElementById('availableUnitCount');
+    const unitAvailableBar = document.getElementById('unitAvailableBar');
 
     try {
-        // Ambil total master unit saja
         const { data: units, error: unitError } = await supabase
             .from('playstation_units')
-            .select('id');
+            .select('id, unit_code')
+            .order('unit_code');
 
         if (unitError) throw unitError;
 
-        if (totalUnitCount) totalUnitCount.innerText = (units || []).length;
-        if (activeUnitCount) activeUnitCount.innerText = activeCount; // Update dengan data yang sudah difilter
+        const unitRows = units || [];
+
+        const activeSet = activeUnitIdsInput instanceof Set
+            ? activeUnitIdsInput
+            : new Set();
+
+        const activeCount = activeUnitIdsInput instanceof Set
+            ? activeSet.size
+            : Number(activeUnitIdsInput || 0);
+
+        const totalCount = unitRows.length;
+        const availableCount = Math.max(totalCount - activeCount, 0);
+        const availablePercent = totalCount > 0
+            ? Math.round((availableCount / totalCount) * 100)
+            : 0;
+
+        if (totalUnitCount) totalUnitCount.innerText = totalCount;
+        if (activeUnitCount) activeUnitCount.innerText = activeCount;
+        if (availableUnitCount) availableUnitCount.innerText = availableCount;
+        if (unitAvailableBar) unitAvailableBar.style.width = `${availablePercent}%`;
+
+        renderDashboardUnitAvailability(unitRows, activeSet);
 
     } catch (err) {
         console.error(err);
@@ -574,6 +625,291 @@ async function createCreditFromReservation(reservation) {
         console.error(insertError);
         throw new Error("Status berhasil diubah, tetapi gagal membuat saldo kredit.");
     }
+}
+
+function renderDashboardRecentReservations(data) {
+    const tbody = document.getElementById('dashboardRecentReservations');
+    if (!tbody) return;
+
+    const rows = [...(data || [])]
+        .sort((a, b) => {
+            const aKey = `${a.play_date || ''} ${a.start_time || ''}`;
+            const bKey = `${b.play_date || ''} ${b.start_time || ''}`;
+            return bKey.localeCompare(aKey);
+        })
+        .slice(0, 4);
+
+    if (rows.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="dashboard-empty-row">
+                    Belum ada data reservasi.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+        const statusInfo = getDashboardStatusInfo(r.reservation_status);
+        const consoleName = r.playstation_units ? r.playstation_units.unit_code : '-';
+        const sessionDate = isTodayDate(r.play_date) ? 'Today' : formatDashboardDate(r.play_date);
+
+        return `
+            <tr>
+                <td><span class="dashboard-code">${escapeHtml(splitBookingCode(r.booking_code))}</span></td>
+                <td>
+                    <span class="customer-main">${escapeHtml(r.customer_name || '-')}</span>
+                    <span class="customer-sub">${escapeHtml(formatPhoneForDashboard(r.phone || '-'))}</span>
+                </td>
+                <td>
+                    <span>${escapeHtml(sessionDate)},<br>${formatTime(r.start_time)}</span>
+                    <span class="session-sub">${Number(r.duration_hours || 0)} Jam</span>
+                </td>
+                <td><span class="console-pill">${escapeHtml(consoleName)}</span></td>
+                <td>
+                    <div class="status-pill-group">
+                        <span class="status-pill ${statusInfo.mainClass}">${statusInfo.main}</span>
+                        <span class="status-pill ${statusInfo.subClass}">${statusInfo.sub}</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderDashboardDailySchedule(data, todayStr, currentTime) {
+    const container = document.getElementById('dashboardDailySchedule');
+    if (!container) return;
+
+    const todayRows = (data || [])
+        .filter(r => r.play_date === todayStr)
+        .filter(r => ['pending_payment', 'paid', 'finished'].includes(r.reservation_status))
+        .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+        .slice(0, 4);
+
+    if (todayRows.length === 0) {
+        container.innerHTML = `
+            <div class="schedule-empty">
+                Belum ada jadwal penggunaan unit untuk hari ini.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = todayRows.map(r => {
+        const start = String(r.start_time || '').substring(0, 5);
+        const end = String(r.end_time || '').substring(0, 5);
+        const isRunning = r.reservation_status === 'paid' && currentTime >= start && currentTime < end;
+        const scheduleLabel = getScheduleLabel(r, currentTime);
+        const unitCode = r.playstation_units ? r.playstation_units.unit_code : '-';
+
+        return `
+            <div class="schedule-item ${isRunning ? 'is-running' : ''}">
+                <div class="schedule-time-wrap">
+                    <span>${escapeHtml(start || '-')}</span>
+                    <div class="schedule-line"></div>
+                </div>
+
+                <div class="schedule-card">
+                    <div class="schedule-card-top">
+                        <strong>${escapeHtml(unitCode)}</strong>
+                        <span class="schedule-badge">${escapeHtml(scheduleLabel)}</span>
+                    </div>
+                    <small>${escapeHtml(r.customer_name || '-')} - ${Number(r.duration_hours || 0)} Jam</small>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderDashboardUnitAvailability(units, activeUnitIds) {
+    const container = document.getElementById('dashboardUnitAvailability');
+    if (!container) return;
+
+    if (!units || units.length === 0) {
+        container.innerHTML = `
+            <div class="unit-availability-empty">
+                Belum ada data unit.
+            </div>
+        `;
+        return;
+    }
+
+    const busyUnits = units.filter(unit => activeUnitIds.has(String(unit.id)));
+    const availableCount = units.length - busyUnits.length;
+    const busyCount = busyUnits.length;
+
+    container.innerHTML = `
+        <div class="unit-availability-summary">
+            <div class="unit-summary-box available">
+                <strong>${availableCount}</strong>
+                <span>Tersedia</span>
+            </div>
+
+            <div class="unit-summary-box busy">
+                <strong>${busyCount}</strong>
+                <span>Terpakai</span>
+            </div>
+        </div>
+
+        <div class="unit-availability-legend">
+            <span><i class="legend-dot available"></i> Tersedia</span>
+            <span><i class="legend-dot busy"></i> Terpakai</span>
+        </div>
+
+        <div class="unit-chip-list">
+            ${units.map(unit => {
+                const isBusy = activeUnitIds.has(String(unit.id));
+                const unitLabel = formatUnitLabel(unit.unit_code || '-');
+
+                return `
+                    <div class="unit-status-chip ${isBusy ? 'busy' : 'available'}">
+                        <strong>${escapeHtml(unitLabel)}</strong>
+                        <span>${isBusy ? 'Terpakai' : 'Tersedia'}</span>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function formatUnitLabel(unitCode) {
+    const value = String(unitCode || '-').trim();
+
+    // Contoh: "PS4 - TV 01" menjadi "PS4-TV01"
+    const psTvMatch = value.match(/PS\s*(\d+).*TV\s*(\d+)/i);
+    if (psTvMatch) {
+        return `PS${psTvMatch[1]}-TV${psTvMatch[2].padStart(2, '0')}`;
+    }
+
+    // Contoh: "PS5 VIP-1" menjadi "PS5-VIP1"
+    const psVipMatch = value.match(/PS\s*(\d+).*VIP[-\s]*(\d+)/i);
+    if (psVipMatch) {
+        return `PS${psVipMatch[1]}-VIP${psVipMatch[2]}`;
+    }
+
+    // Contoh: "PS4 Reg-4" menjadi "PS4-REG4"
+    const psRegMatch = value.match(/PS\s*(\d+).*Reg[-\s]*(\d+)/i);
+    if (psRegMatch) {
+        return `PS${psRegMatch[1]}-REG${psRegMatch[2]}`;
+    }
+
+    return value;
+}
+
+function getDashboardStatusInfo(status) {
+    const map = {
+        pending_payment: {
+            main: 'Pending',
+            mainClass: 'warning',
+            sub: 'Waiting',
+            subClass: 'neutral'
+        },
+        paid: {
+            main: 'Lunas',
+            mainClass: 'success',
+            sub: 'Confirmed',
+            subClass: 'primary'
+        },
+        finished: {
+            main: 'Selesai',
+            mainClass: 'success',
+            sub: 'Done',
+            subClass: 'neutral'
+        },
+        cancelled_refund: {
+            main: 'Refund',
+            mainClass: 'danger',
+            sub: 'Manual',
+            subClass: 'neutral'
+        },
+        converted_to_credit: {
+            main: 'Credit',
+            mainClass: 'primary',
+            sub: 'Saldo',
+            subClass: 'neutral'
+        }
+    };
+
+    return map[status] || {
+        main: 'Unknown',
+        mainClass: 'neutral',
+        sub: '-',
+        subClass: 'neutral'
+    };
+}
+
+function getScheduleLabel(reservation, currentTime) {
+    const start = String(reservation.start_time || '').substring(0, 5);
+    const end = String(reservation.end_time || '').substring(0, 5);
+
+    if (reservation.reservation_status === 'paid' && currentTime >= start && currentTime < end) {
+        return 'Running';
+    }
+
+    if (reservation.reservation_status === 'pending_payment') {
+        return 'Waiting';
+    }
+
+    if (reservation.reservation_status === 'finished') {
+        return 'Finished';
+    }
+
+    if (start > currentTime) {
+        return 'Next';
+    }
+
+    return 'Scheduled';
+}
+
+function splitBookingCode(code) {
+    const value = String(code || '-');
+
+    if (value.length <= 8) return value;
+
+    return `${value.substring(0, 4)}-
+${value.substring(4)}`;
+}
+
+function formatPhoneForDashboard(phone) {
+    const value = String(phone || '-');
+
+    if (value.length < 8) return value;
+
+    return value.replace(/(.{4})(.{4})(.*)/, '$1-$2-$3');
+}
+
+function formatDashboardDate(dateValue) {
+    if (!dateValue) return '-';
+
+    const parts = String(dateValue).split('-');
+
+    if (parts.length !== 3) return dateValue;
+
+    return `${parts[2]}/${parts[1]}`;
+}
+
+function isTodayDate(dateValue) {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    return dateValue === today;
+}
+
+function shortUnitCode(unitCode) {
+    const value = String(unitCode || '-').trim();
+
+    const vipMatch = value.match(/VIP[-\s]*(\d+)/i);
+    if (vipMatch) return `V${vipMatch[1]}`;
+
+    const regMatch = value.match(/Reg[-\s]*(\d+)/i);
+    if (regMatch) return `R${regMatch[1]}`;
+
+    const numberMatch = value.match(/(\d+)/);
+    if (numberMatch) return numberMatch[1];
+
+    return value.substring(0, 3).toUpperCase();
 }
 
 window.loadAdminData = loadAdminData;

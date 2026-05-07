@@ -1,5 +1,6 @@
 // admin-walkin.js
 // Berisi fungsi pemilihan unit dan input reservasi walk-in.
+// Tampilan dibuat konsisten dengan halaman pesan pelanggan.
 
 async function loadWalkinUnits() {
     const { data, error } = await supabase
@@ -18,37 +19,78 @@ async function loadWalkinUnits() {
 
     window.adminState.unitsData.forEach(unit => {
         const div = document.createElement('div');
-        div.className = 'unit-card';
+        div.className = 'unit-card admin-walkin-unit-card';
         div.id = `walkin-card-${unit.id}`;
 
+        const typeText = String(unit.unit_code || '').includes('5')
+            ? 'PREMIUM SLOT'
+            : 'CLASSIC SLOT';
+
         div.innerHTML = `
-            <div>
-                <strong>${unit.unit_code}</strong><br>
-                <span class="price-tag">Rp ${Number(unit.price_per_hour || 0).toLocaleString()}/jam</span>
+            <div class="uc-header">
+                <span class="uc-type">${typeText}</span>
+                <div id="walkin-status-${unit.id}" class="uc-badge badge-gray">
+                    Memuat...
+                </div>
             </div>
 
-            <div class="unit-status" id="walkin-status-${unit.id}">
-                <small style="color: gray;">Memuat status...</small>
+            <div class="uc-body">
+                <h2 class="uc-code">${escapeWalkinHtml(unit.unit_code)}</h2>
+                <div class="uc-price">
+                    Rp ${Number(unit.price_per_hour || 0).toLocaleString('id-ID')}
+                    <span>/jam</span>
+                </div>
             </div>
+
+            <button type="button" class="uc-btn">Pilih Unit Ini</button>
         `;
 
         div.onclick = () => {
-            document
-                .querySelectorAll('#walkinUnitContainer .unit-card')
-                .forEach(c => c.classList.remove('selected'));
-
-            div.classList.add('selected');
-
-            document.getElementById('selectedUnitId').value = unit.id;
-            document.getElementById('selectedUnitPrice').value = unit.price_per_hour;
-
-            calculateWalkinPrice();
+            selectWalkinUnit(unit, div);
         };
 
         container.appendChild(div);
     });
 
-    checkWalkinUnitStatuses();
+    // Pilih unit pertama otomatis supaya tampilannya seperti halaman pesan.
+    if (window.adminState.unitsData.length > 0) {
+        const firstUnit = window.adminState.unitsData[0];
+        const firstCard = document.getElementById(`walkin-card-${firstUnit.id}`);
+
+        if (firstUnit && firstCard) {
+            selectWalkinUnit(firstUnit, firstCard);
+        }
+    }
+
+    await checkWalkinUnitStatuses();
+}
+
+function selectWalkinUnit(unit, cardElement) {
+    document
+        .querySelectorAll('#walkinUnitContainer .unit-card')
+        .forEach(card => {
+            card.classList.remove('selected');
+
+            const btn = card.querySelector('.uc-btn');
+            if (btn) btn.innerText = 'Pilih Unit Ini';
+        });
+
+    cardElement.classList.add('selected');
+
+    const selectedBtn = cardElement.querySelector('.uc-btn');
+    if (selectedBtn) {
+        selectedBtn.innerText = 'Unit Terpilih';
+    }
+
+    const selectedUnitId = document.getElementById('selectedUnitId');
+    const selectedUnitPrice = document.getElementById('selectedUnitPrice');
+    const summaryUnit = document.getElementById('walkinSummaryUnitCode');
+
+    if (selectedUnitId) selectedUnitId.value = unit.id;
+    if (selectedUnitPrice) selectedUnitPrice.value = unit.price_per_hour;
+    if (summaryUnit) summaryUnit.innerText = unit.unit_code;
+
+    calculateWalkinPrice();
 }
 
 async function checkWalkinUnitStatuses() {
@@ -59,7 +101,7 @@ async function checkWalkinUnitStatuses() {
         .from('reservations')
         .select('unit_id, start_time, end_time, reservation_status')
         .eq('play_date', playDate)
-        .in('reservation_status', ['pending_payment', 'paid']);
+        .eq('reservation_status', 'paid');
 
     if (error) return console.error(error);
 
@@ -74,54 +116,53 @@ async function checkWalkinUnitStatuses() {
         const unitBookings = (data || []).filter(r => r.unit_id === unit.id);
 
         if (unitBookings.length === 0) {
-            statusDiv.innerHTML = `<span class="text-success">✅ Tersedia</span>`;
+            statusDiv.className = 'uc-badge badge-available';
+            statusDiv.innerText = 'TERSEDIA';
             return;
         }
 
         if (playDate === todayStr) {
-            const ongoingPaid = unitBookings.find(b => {
-                const start = String(b.start_time || '').substring(0, 5);
-                const end = String(b.end_time || '').substring(0, 5);
+            const ongoingPaid = unitBookings.find(booking => {
+                const start = String(booking.start_time || '').substring(0, 5);
+                const end = String(booking.end_time || '').substring(0, 5);
 
-                return (
-                    b.reservation_status === 'paid' &&
-                    currentHourStr >= start &&
-                    currentHourStr < end
-                );
+                return currentHourStr >= start && currentHourStr < end;
             });
 
             if (ongoingPaid) {
-                statusDiv.innerHTML = `
-                    <span class="text-danger">
-                        🔴 Terpakai s/d ${String(ongoingPaid.end_time || '').substring(0, 5)}
-                    </span>
-                `;
+                statusDiv.className = 'uc-badge badge-used';
+                statusDiv.innerText = `DIPAKAI SD ${String(ongoingPaid.end_time || '').substring(0, 5)}`;
             } else {
-                statusDiv.innerHTML = `
-                    <span style="color: #d97706; font-weight: bold;">
-                        🟡 Ada Jadwal
-                    </span>
-                `;
+                statusDiv.className = 'uc-badge badge-booked';
+                statusDiv.innerText = 'ADA JADWAL';
             }
         } else {
-            statusDiv.innerHTML = `
-                <span style="color: #d97706; font-weight: bold;">
-                    🟡 Ada Jadwal
-                </span>
-            `;
+            statusDiv.className = 'uc-badge badge-booked';
+            statusDiv.innerText = 'ADA JADWAL';
         }
     });
 }
 
 function calculateWalkinPrice() {
     const price = Number(document.getElementById('selectedUnitPrice')?.value || 0);
-    const dur = Number(document.getElementById('duration')?.value || 1);
+    const duration = Number(document.getElementById('duration')?.value || 1);
 
-    window.adminState.walkinTotal = price * dur;
+    window.adminState.walkinTotal = price * duration;
 
+    const summaryDuration = document.getElementById('walkinSummaryDuration');
+    const summarySubtotal = document.getElementById('walkinSummarySubtotal');
     const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+
+    if (summaryDuration) {
+        summaryDuration.innerText = duration;
+    }
+
+    if (summarySubtotal) {
+        summarySubtotal.innerText = `Rp ${window.adminState.walkinTotal.toLocaleString('id-ID')}`;
+    }
+
     if (totalPriceDisplay) {
-        totalPriceDisplay.innerText = `Total Tagihan: Rp ${window.adminState.walkinTotal.toLocaleString()}`;
+        totalPriceDisplay.innerText = `Rp ${window.adminState.walkinTotal.toLocaleString('id-ID')}`;
     }
 }
 
@@ -134,7 +175,6 @@ async function handleWalkinReservation(e) {
         return alert("Pilih unit PS terlebih dahulu!");
     }
 
-    const btn = document.getElementById('btnSubmitWalkin');
     setWalkinButtonLoading(true);
 
     try {
@@ -142,10 +182,10 @@ async function handleWalkinReservation(e) {
         const customerPhone = document.getElementById('custPhone')?.value?.trim();
         const playDate = document.getElementById('playDate')?.value;
         const startTimeStr = document.getElementById('startTime')?.value;
-        const dur = Number(document.getElementById('duration')?.value || 1);
+        const duration = Number(document.getElementById('duration')?.value || 1);
         const totalPrice = Number(window.adminState.walkinTotal || 0);
 
-        if (!customerName || !customerPhone || !playDate || !startTimeStr || !dur) {
+        if (!customerName || !customerPhone || !playDate || !startTimeStr || !duration) {
             alert("Lengkapi semua data reservasi walk-in terlebih dahulu.");
             setWalkinButtonLoading(false);
             return;
@@ -158,9 +198,10 @@ async function handleWalkinReservation(e) {
         }
 
         const startTime = startTimeStr.length === 5 ? startTimeStr + ":00" : startTimeStr;
-        const endTime = calculateEndTime(startTime, dur);
+        const endTime = calculateEndTime(startTime, duration);
 
         const isConflict = await checkWalkinConflict(unitId, playDate, startTime, endTime);
+
         if (isConflict) {
             setWalkinButtonLoading(false);
             return;
@@ -178,7 +219,7 @@ async function handleWalkinReservation(e) {
                 play_date: playDate,
                 start_time: startTime,
                 end_time: endTime,
-                duration_hours: dur,
+                duration_hours: duration,
                 total_price: totalPrice,
                 reservation_status: 'paid',
                 payment_status: 'paid'
@@ -235,7 +276,7 @@ async function checkWalkinConflict(unitId, playDate, startTime, endTime) {
         .select('booking_code, customer_name, start_time, end_time, reservation_status')
         .eq('unit_id', unitId)
         .eq('play_date', playDate)
-        .in('reservation_status', ['pending_payment', 'paid'])
+        .eq('reservation_status', 'paid')
         .lt('start_time', endTime)
         .gt('end_time', startTime);
 
@@ -246,12 +287,10 @@ async function checkWalkinConflict(unitId, playDate, startTime, endTime) {
 
     if (conflicts && conflicts.length > 0) {
         const jadwalBentrok = conflicts
-            .map(r => {
-                const statusLabel = r.reservation_status === 'pending_payment'
-                    ? 'Pending'
-                    : 'Paid';
+            .map(reservation => {
+                const statusLabel = 'Paid';
 
-                return `${r.booking_code} - ${r.customer_name} (${String(r.start_time).substring(0, 5)} - ${String(r.end_time).substring(0, 5)}) [${statusLabel}]`;
+                return `${reservation.booking_code} - ${reservation.customer_name} (${String(reservation.start_time).substring(0, 5)} - ${String(reservation.end_time).substring(0, 5)}) [${statusLabel}]`;
             })
             .join('\n');
 
@@ -293,7 +332,8 @@ async function createWalkinPayment(reservation, amount) {
         .insert([{
             reservation_id: reservation.id,
             payment_method: 'Walk-in',
-            amount: amount
+            amount: amount,
+            created_at: new Date().toISOString()
         }]);
 
     if (paymentError) {
@@ -305,12 +345,12 @@ async function createWalkinPayment(reservation, amount) {
 }
 
 function calculateEndTime(startTime, durationHours) {
-    const [h, m] = startTime.split(':');
+    const [hour, minute] = startTime.split(':');
 
-    const d = new Date();
-    d.setHours(Number(h) + Number(durationHours), Number(m), 0, 0);
+    const date = new Date();
+    date.setHours(Number(hour) + Number(durationHours), Number(minute), 0, 0);
 
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
 }
 
 function generateWalkinBookingCode() {
@@ -321,21 +361,30 @@ function resetWalkinForm() {
     const form = document.getElementById('walkinForm');
     if (form) form.reset();
 
-    document.querySelectorAll('#walkinUnitContainer .unit-card').forEach(c => {
-        c.classList.remove('selected');
+    document.querySelectorAll('#walkinUnitContainer .unit-card').forEach(card => {
+        card.classList.remove('selected');
+
+        const btn = card.querySelector('.uc-btn');
+        if (btn) btn.innerText = 'Pilih Unit Ini';
     });
 
     const selectedUnitId = document.getElementById('selectedUnitId');
     const selectedUnitPrice = document.getElementById('selectedUnitPrice');
     const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+    const summaryUnit = document.getElementById('walkinSummaryUnitCode');
+    const summaryDuration = document.getElementById('walkinSummaryDuration');
+    const summarySubtotal = document.getElementById('walkinSummarySubtotal');
 
     if (selectedUnitId) selectedUnitId.value = '';
     if (selectedUnitPrice) selectedUnitPrice.value = '';
+    if (summaryUnit) summaryUnit.innerText = '-';
+    if (summaryDuration) summaryDuration.innerText = '1';
+    if (summarySubtotal) summarySubtotal.innerText = 'Rp 0';
 
     window.adminState.walkinTotal = 0;
 
     if (totalPriceDisplay) {
-        totalPriceDisplay.innerText = 'Total Tagihan: Rp 0';
+        totalPriceDisplay.innerText = 'Rp 0';
     }
 
     const today = new Date().toLocaleDateString('en-CA');
@@ -344,6 +393,18 @@ function resetWalkinForm() {
     if (playDate) {
         playDate.value = today;
     }
+
+    // Pilih ulang unit pertama setelah form direset.
+    if (window.adminState.unitsData.length > 0) {
+        const firstUnit = window.adminState.unitsData[0];
+        const firstCard = document.getElementById(`walkin-card-${firstUnit.id}`);
+
+        if (firstUnit && firstCard) {
+            selectWalkinUnit(firstUnit, firstCard);
+        }
+    }
+
+    checkWalkinUnitStatuses();
 }
 
 function setWalkinButtonLoading(isLoading) {
@@ -351,7 +412,18 @@ function setWalkinButtonLoading(isLoading) {
     if (!btn) return;
 
     btn.disabled = isLoading;
-    btn.innerText = isLoading ? "Memproses..." : "Simpan Reservasi (Langsung Paid)";
+    btn.innerText = isLoading ? "Memproses..." : "Simpan Reservasi Walk-in";
+}
+
+function escapeWalkinHtml(value) {
+    if (value === null || value === undefined) return '';
+
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 window.loadWalkinUnits = loadWalkinUnits;

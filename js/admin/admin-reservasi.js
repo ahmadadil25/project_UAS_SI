@@ -176,7 +176,6 @@ async function updateDashboardSummary(data) {
                 revenue += Number(r.total_price || 0);
             }
 
-            if (r.reservation_status === 'pending_payment') pendingCount++;
             if (r.reservation_status === 'finished') finishedCount++;
             if (r.reservation_status === 'cancelled_refund') refundCount++;
             if (r.reservation_status === 'converted_to_credit') creditCount++;
@@ -295,7 +294,6 @@ function updateReservationFilterInfo(filteredCount, totalCount) {
 
 function getStatusLabel(status) {
     const labels = {
-        pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
         cancelled_refund: 'Refund',
@@ -308,10 +306,6 @@ function getStatusLabel(status) {
 function getStatusBadgeClass(status) {
     if (status === 'paid' || status === 'finished') {
         return 'badge-paid';
-    }
-
-    if (status === 'pending_payment') {
-        return 'badge-pending';
     }
 
     if (status === 'cancelled_refund' || status === 'converted_to_credit') {
@@ -414,7 +408,6 @@ function ensureStatusModalExists() {
                 <div class="form-group">
                     <label for="editReservationStatus">Pilih Status Baru</label>
                     <select id="editReservationStatus" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-                        <option value="pending_payment">Pending Payment</option>
                         <option value="paid">Paid</option>
                         <option value="finished">Finished</option>
                         <option value="cancelled_refund">Cancelled Refund</option>
@@ -481,7 +474,7 @@ async function openStatusModal(id) {
     currentBadge.innerText = getStatusLabel(reservation.reservation_status);
 
     document.getElementById('editReservationStatus').value =
-        reservation.reservation_status || 'pending_payment';
+        reservation.reservation_status || 'paid';
 
     document.getElementById('statusModal').style.display = 'flex';
 }
@@ -684,7 +677,7 @@ function renderDashboardDailySchedule(data, todayStr, currentTime) {
 
     const todayRows = (data || [])
         .filter(r => r.play_date === todayStr)
-        .filter(r => ['pending_payment', 'paid', 'finished'].includes(r.reservation_status))
+        .filter(r => ['paid', 'finished'].includes(r.reservation_status))
         .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
         .slice(0, 4);
 

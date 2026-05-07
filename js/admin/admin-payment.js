@@ -298,7 +298,6 @@ function setTextIfExists(id, value) {
 
 function getPaymentReservationLabel(status) {
     const labels = {
-        pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
         cancelled_refund: 'Refund',
@@ -311,10 +310,6 @@ function getPaymentReservationLabel(status) {
 function getPaymentReservationBadge(status) {
     if (status === 'paid' || status === 'finished') {
         return 'badge-paid';
-    }
-
-    if (status === 'pending_payment') {
-        return 'badge-pending';
     }
 
     if (status === 'cancelled_refund' || status === 'converted_to_credit') {

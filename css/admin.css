@@ -621,34 +621,6 @@ tbody tr:hover {
 }
 
 
-/* FLOATING ACTION BUTTON */
-.admin-fab {
-    position: fixed;
-    right: 32px;
-    bottom: 32px;
-    z-index: 30;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--primary-gradient);
-    color: #ffffff;
-    cursor: pointer;
-    font-size: 32px;
-    font-weight: 500;
-    line-height: 1;
-    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.32);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.admin-fab:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 30px 60px -15px rgba(15, 23, 42, 0.38);
-}
-
 /* RESPONSIVE */
 @media (max-width: 1100px) {
     .dashboard-cards {
@@ -1958,5 +1930,799 @@ table td {
         min-width: 300px;
         max-width: 315px;
         min-height: 560px;
+    }
+}
+
+/* FIX TAB ADMIN */
+#dashboardTab,
+#reservasiTab,
+#walkinTab,
+#paymentTab,
+#kreditTab,
+#laporanTab {
+    display: none;
+}
+
+#dashboardTab.active-tab,
+#reservasiTab.active-tab,
+#walkinTab.active-tab,
+#paymentTab.active-tab,
+#kreditTab.active-tab,
+#laporanTab.active-tab {
+    display: block;
+}
+
+/* Header reservasi dan tombol refresh kecil */
+.reservasi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.icon-refresh-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 12px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 23px;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
+    transition: all 0.2s ease;
+}
+
+.icon-refresh-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.icon-refresh-btn:active {
+    transform: translateY(0);
+}
+
+/* Filter Data Reservasi */
+.reservasi-filter-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 18px;
+    align-items: end;
+    margin-bottom: 18px;
+}
+
+.reservasi-filter-grid .form-group {
+    margin-bottom: 0;
+}
+
+.reservasi-filter-grid input,
+.reservasi-filter-grid select {
+    width: 100%;
+}
+
+@media (max-width: 992px) {
+    .reservasi-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reservasi-header {
+        flex-wrap: wrap;
+    }
+}
+
+/* ===== Sidebar Professional Icons ===== */
+.sidebar h3 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+    color: #0f172a;
+}
+
+.sidebar-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 28px;
+}
+
+.nav-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 18px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 16px;
+    background: transparent;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+    background: #eef4ff;
+    color: #2563eb;
+    transform: translateX(2px);
+}
+
+.nav-btn.active {
+    background: linear-gradient(135deg, #2563eb, #2f6df6);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+}
+
+.nav-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nav-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 22px 0 20px;
+}
+
+.sidebar-logout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 16px;
+    font-weight: 700;
+    padding: 14px 18px;
+}
+
+
+/* =========================
+   ADMIN WALK-IN LIKE CUSTOMER PAGE
+========================= */
+
+.admin-walkin-page {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.walkin-hero-section {
+    margin-bottom: 30px;
+}
+
+.walkin-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #ebf3ff;
+    color: #0b5ed7;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.walkin-hero-section h2 {
+    margin: 0 0 8px;
+    color: #111827;
+    font-family: Poppins, Inter, system-ui, sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+}
+
+.walkin-hero-section p {
+    max-width: 680px;
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.admin-walkin-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 390px;
+    gap: 30px;
+    align-items: start;
+}
+
+.admin-walkin-page .unit-selection {
+    min-width: 0;
+}
+
+.admin-walkin-page .section-title {
+    margin-bottom: 18px;
+}
+
+.admin-walkin-page .section-title h3 {
+    margin: 0 0 5px;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.admin-walkin-page .section-title p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.admin-walkin-page .unit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.admin-walkin-page .unit-card {
+    min-height: auto;
+    padding: 20px;
+    border: 2px solid transparent;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+
+.admin-walkin-page .unit-card:hover {
+    transform: translateY(-3px);
+    border-color: #e5e7eb;
+}
+
+.admin-walkin-page .unit-card.selected {
+    border-color: #0b5ed7;
+    background: #ebf3ff;
+    box-shadow: 0 10px 30px rgba(11, 94, 215, 0.12);
+}
+
+.admin-walkin-page .uc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.admin-walkin-page .uc-type {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.admin-walkin-page .uc-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.admin-walkin-page .badge-gray {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.admin-walkin-page .badge-available {
+    background: #e0e7ff;
+    color: #0b5ed7;
+}
+
+.admin-walkin-page .badge-booked {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.admin-walkin-page .badge-used {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.admin-walkin-page .uc-code {
+    margin: 0 0 5px;
+    color: #111827;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+}
+
+.admin-walkin-page .uc-price {
+    color: #111827;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.admin-walkin-page .uc-price span {
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.admin-walkin-page .uc-btn {
+    width: 100%;
+    margin-top: 15px;
+    padding: 11px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8f9fa;
+    color: #111827;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    transition: 0.2s ease;
+}
+
+.admin-walkin-page .unit-card.selected .uc-btn {
+    background: #0b5ed7;
+    color: #ffffff;
+    border-color: #0b5ed7;
+}
+
+.admin-walkin-card {
+    padding: 30px;
+    border-radius: 24px;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.admin-walkin-card h3 {
+    margin-bottom: 20px;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.admin-walkin-page .form-group label {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.admin-walkin-page input,
+.admin-walkin-page select {
+    min-height: 50px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 14px;
+}
+
+.admin-walkin-page input:focus,
+.admin-walkin-page select:focus {
+    border-color: #0b5ed7;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(11, 94, 215, 0.10);
+}
+
+.admin-walkin-page .input-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.admin-walkin-page .order-summary {
+    margin: 25px 0 15px;
+    padding: 20px;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.admin-walkin-page .summary-title {
+    margin-bottom: 15px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.admin-walkin-page .summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    color: #111827;
+    font-size: 13px;
+}
+
+.admin-walkin-page .summary-row.total {
+    align-items: center;
+    margin-bottom: 0;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.admin-walkin-page .summary-divider {
+    height: 1px;
+    margin: 15px 0;
+    background: #e5e7eb;
+}
+
+.admin-walkin-page .text-blue {
+    color: #0b5ed7 !important;
+}
+
+.admin-walkin-page .btn.full-width {
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: 16px;
+    font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+    .admin-walkin-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-walkin-card {
+        position: static;
+    }
+}
+
+@media (max-width: 640px) {
+    .walkin-hero-section h2 {
+        font-size: 28px;
+    }
+
+    .admin-walkin-page .input-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================
+   WALK-IN COMPACT 6 UNIT VIEW
+   6 unit terlihat, sisanya scroll
+========================= */
+
+.admin-walkin-page {
+    max-width: 1160px;
+    margin: 0 auto;
+}
+
+.admin-walkin-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 390px;
+    gap: 30px;
+    align-items: start;
+}
+
+/* Area kiri tidak ikut bikin halaman panjang */
+.admin-walkin-page .unit-selection {
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Container unit: 2 kolom x 3 baris = 6 unit */
+.admin-walkin-page #walkinUnitContainer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+    gap: 14px;
+    max-height: 610px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+    padding-bottom: 2px;
+}
+
+/* Card unit dibuat lebih pendek agar tidak terpotong */
+.admin-walkin-page .unit-card {
+    min-height: 185px;
+    padding: 16px;
+    border: 2px solid transparent;
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.admin-walkin-page .unit-card:hover {
+    transform: translateY(-2px);
+    border-color: #e5e7eb;
+}
+
+.admin-walkin-page .unit-card.selected {
+    border-color: #0b5ed7;
+    background: #ebf3ff;
+    box-shadow: 0 10px 24px rgba(11, 94, 215, 0.12);
+}
+
+/* Header card lebih compact */
+.admin-walkin-page .uc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.admin-walkin-page .uc-type {
+    max-width: 95px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.5px;
+}
+
+.admin-walkin-page .uc-badge {
+    min-height: 24px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+/* Teks unit dibuat pas */
+.admin-walkin-page .uc-code {
+    margin: 0 0 8px;
+    color: #111827;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+}
+
+.admin-walkin-page .uc-price {
+    color: #111827;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.admin-walkin-page .uc-price span {
+    margin-left: 4px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Tombol unit lebih pendek */
+.admin-walkin-page .uc-btn {
+    width: 100%;
+    min-height: 40px;
+    margin-top: 18px;
+    padding: 9px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f8f9fa;
+    color: #111827;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    transition: 0.2s ease;
+}
+
+.admin-walkin-page .unit-card.selected .uc-btn {
+    background: #0b5ed7;
+    color: #ffffff;
+    border-color: #0b5ed7;
+}
+
+/* Scrollbar rapi */
+.admin-walkin-page #walkinUnitContainer::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-walkin-page #walkinUnitContainer::-webkit-scrollbar-track {
+    background: #eef2f7;
+    border-radius: 999px;
+}
+
+.admin-walkin-page #walkinUnitContainer::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+.admin-walkin-page #walkinUnitContainer::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Form kanan tetap terlihat */
+.admin-walkin-page .admin-walkin-card {
+    position: sticky;
+    top: 24px;
+}
+
+/* Laptop 1366px: sedikit lebih compact */
+@media (max-width: 1366px) {
+    .admin-walkin-page #walkinUnitContainer {
+        max-height: 560px;
+        gap: 12px;
+    }
+
+    .admin-walkin-page .unit-card {
+        min-height: 170px;
+        padding: 15px;
+    }
+
+    .admin-walkin-page .uc-header {
+        margin-bottom: 14px;
+    }
+
+    .admin-walkin-page .uc-code {
+        font-size: 22px;
+    }
+
+    .admin-walkin-page .uc-price {
+        font-size: 18px;
+    }
+
+    .admin-walkin-page .uc-btn {
+        margin-top: 14px;
+        min-height: 38px;
+    }
+}
+
+/* Tablet/mobile */
+@media (max-width: 1100px) {
+    .admin-walkin-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-walkin-page #walkinUnitContainer {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+    }
+
+    .admin-walkin-page .admin-walkin-card {
+        position: static;
+    }
+}
+
+/* =========================
+   WALK-IN FORM RIGHT SIDE
+   Lebih kecil & seimbang
+========================= */
+
+/* Kolom kanan sedikit dipersempit */
+.admin-walkin-layout {
+    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* Card form dibuat lebih compact */
+.admin-walkin-page .admin-walkin-card {
+    max-width: 350px;
+    padding: 22px;
+    border-radius: 22px;
+    position: sticky;
+    top: 20px;
+}
+
+/* Judul form sedikit lebih kecil */
+.admin-walkin-page .admin-walkin-card h3 {
+    margin-bottom: 18px;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+/* Jarak antar form dirapikan */
+.admin-walkin-page .form-group {
+    margin-bottom: 12px;
+}
+
+.admin-walkin-page .form-group label {
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+/* Input lebih pendek dan compact */
+.admin-walkin-page input,
+.admin-walkin-page select {
+    min-height: 44px;
+    padding: 11px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+}
+
+/* Grid tanggal & jam tetap rapi */
+.admin-walkin-page .input-grid-2 {
+    gap: 12px;
+}
+
+/* Order summary diperkecil */
+.admin-walkin-page .order-summary {
+    margin: 18px 0 12px;
+    padding: 16px;
+    border-radius: 16px;
+}
+
+.admin-walkin-page .summary-title {
+    margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.admin-walkin-page .summary-row {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.admin-walkin-page .summary-row.total {
+    font-size: 16px;
+}
+
+.admin-walkin-page .summary-divider {
+    margin: 12px 0;
+}
+
+/* Tombol submit lebih pas */
+.admin-walkin-page .btn.full-width {
+    min-height: 46px;
+    padding: 12px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* Laptop 1366 seperti screenshot kamu */
+@media (max-width: 1366px) {
+    .admin-walkin-layout {
+        grid-template-columns: minmax(0, 1fr) 330px;
+        gap: 22px;
+    }
+
+    .admin-walkin-page .admin-walkin-card {
+        max-width: 330px;
+        padding: 20px;
+    }
+
+    .admin-walkin-page .admin-walkin-card h3 {
+        font-size: 16px;
+    }
+
+    .admin-walkin-page input,
+    .admin-walkin-page select {
+        min-height: 42px;
+        font-size: 12.5px;
+    }
+
+    .admin-walkin-page .summary-row.total {
+        font-size: 15px;
+    }
+}
+
+/* Tablet / mobile balik normal 1 kolom */
+@media (max-width: 1100px) {
+    .admin-walkin-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-walkin-page .admin-walkin-card {
+        max-width: 100%;
+        position: static;
     }
 }

@@ -277,9 +277,6 @@ function calculateLaporanSummary(rows) {
         summary.totalReservasiValue += totalPrice;
         summary.totalPembayaran += paymentAmount;
 
-        if (status === 'pending_payment') {
-            summary.pendingCount++;
-        }
 
         if (status === 'paid') {
             summary.paidCount++;
@@ -396,7 +393,6 @@ function cetakLaporanHarian() {
 
 function getLaporanStatusLabel(status) {
     const labels = {
-        pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
         cancelled_refund: 'Refund',
@@ -409,10 +405,6 @@ function getLaporanStatusLabel(status) {
 function getLaporanStatusBadge(status) {
     if (status === 'paid' || status === 'finished') {
         return 'badge-paid';
-    }
-
-    if (status === 'pending_payment') {
-        return 'badge-pending';
     }
 
     if (status === 'cancelled_refund' || status === 'converted_to_credit') {

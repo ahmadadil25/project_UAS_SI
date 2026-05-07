@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PS Hub - Reservasi Rental PS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PS Hub - Reservasi Premium</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="css/style.css">
@@ -12,13 +12,13 @@
 <body>
     <header class="top-navbar">
         <div class="nav-container">
-            <div class="logo-area">
+            <div class="logo-area" onclick="showSection('home')" style="cursor: pointer;">
                 <span class="logo-text">PS <span>Hub</span></span>
-                <span class="logo-sub">RESERVASI RENTAL PS</span>
+                <span class="logo-sub">PREMIUM LOUNGE</span>
             </div>
             <nav class="nav-menu">
-                <button class="nav-item active" onclick="showSection('home')">Pesan Jadwal</button>
-                <button class="nav-item outline" onclick="showSection('check')">Cek / Batal Reservasi</button>
+                <button id="nav-home" class="nav-item active" onclick="showSection('home')">Pesan Jadwal</button>
+                <button id="nav-check" class="nav-item outline" onclick="showSection('check')">Cek Reservasi</button>
             </nav>
         </div>
     </header>
@@ -27,82 +27,93 @@
         <div id="home" class="section active">
             <div class="hero-section">
                 <div class="hero-text">
-                    <h1>Rental PS<br><span>Reservasi</span></h1>
-                    <p>Pesan jadwal bermain dengan mudah dan cepat melalui portal reservasi premium kami.</p>
+                    <h1>Rental PS<br><span>Lebih Mudah.</span></h1>
+                    <p>Pesan jadwal bermain tanpa antre melalui portal reservasi eksklusif PS Hub.</p>
+                    <div class="hero-badges">
+                        <span class="badge-premium"><i data-lucide="zap"></i> Booking Cepat</span>
+                        <span class="badge-premium"><i data-lucide="qr-code"></i> QRIS Ready</span>
+                        <span class="badge-premium"><i data-lucide="clock"></i> Real-time</span>
+                    </div>
                 </div>
             </div>
 
             <div class="reservation-layout">
-                <div class="unit-selection">
+                <div class="unit-selection unit-selection-container">
                     <div class="section-title">
                         <h3>Pilih Unit Console</h3>
-                        <p>Klik 1x untuk pilih, klik 2x untuk lihat detail jadwal.</p>
+                        <p>Pilih konsol untuk melihat ketersediaan jadwal hari ini.</p>
                     </div>
-                    <div class="unit-grid" id="unitContainer">
-                        </div>
+                    
+                    <div class="unit-scroll-area">
+                        <div class="unit-grid" id="unitContainer">
+                            </div>
+                    </div>
+                    
                     <input type="hidden" id="selectedUnitId" required>
                     <input type="hidden" id="selectedUnitPrice">
                 </div>
 
                 <div class="form-container" id="formContainerWrapper">
                     <div class="form-card sticky-card">
-                        <h3>Form Reservasi</h3>
+                        <h3>Lengkapi Data</h3>
                         <form id="reservationForm" onsubmit="handleReservation(event)">
                             <div class="form-group">
-                                <label>FULL NAME</label>
-                                <input type="text" id="custName" required placeholder="Masukkan nama lengkap">
+                                <label>NAMA LENGKAP</label>
+                                <input type="text" id="custName" required placeholder="Sesuai kartu identitas">
                             </div>
                             <div class="form-group">
-                                <label>WHATSAPP NUMBER</label>
-                                <input type="number" id="custPhone" required placeholder="0812xxxxxx">
+                                <label>NOMOR WHATSAPP</label>
+                                <input type="tel" id="custPhone" pattern="[0-9]*" inputmode="numeric" required placeholder="08123456789">
+                                <span class="helper-text">Pastikan nomor aktif untuk menerima konfirmasi.</span>
                             </div>
                             
                             <div class="input-grid-2">
                                 <div class="form-group">
-                                    <label>PLAY DATE</label>
+                                    <label>TANGGAL MAIN</label>
                                     <input type="date" id="playDate" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>START TIME</label>
+                                    <label>JAM MULAI</label>
                                     <input type="time" id="startTime" required>
                                 </div>
                             </div>
                             
                             <div class="form-group">
-                                <label>DURATION (HOURS)</label>
+                                <label>DURASI (JAM)</label>
                                 <select id="duration" required onchange="calculatePrice()">
                                     <option value="1">1 Jam</option>
-                                    <option value="2" selected>2 Jam</option>
+                                    <option value="2" selected>2 Jam (Rekomendasi)</option>
                                     <option value="3">3 Jam</option>
                                     <option value="4">4 Jam</option>
                                     <option value="5">5 Jam</option>
+                                    <option value="6">6 Jam</option>
                                 </select>
                             </div>
 
-                            <div class="order-summary">
-                                <p class="summary-title">ORDER SUMMARY</p>
+                            <div class="order-summary" id="orderSummaryBox">
+                                <p class="summary-title">RINGKASAN PESANAN</p>
                                 <div class="summary-row">
-                                    <span>Unit Selected</span>
-                                    <strong id="summaryUnitCode" class="text-blue">-</strong>
+                                    <span>Konsol Terpilih</span>
+                                    <strong id="summaryUnitCode" class="text-blue">Belum dipilih</strong>
                                 </div>
                                 <div class="summary-row">
-                                    <span>Playtime (<span id="summaryDuration">2</span>h)</span>
-                                    <strong id="summarySubtotal">Rp 0</strong>
+                                    <span>Durasi Bermain</span>
+                                    <strong><span id="summaryDuration">2</span> Jam</strong>
                                 </div>
                                 <div class="summary-divider"></div>
                                 <div class="summary-row total">
-                                    <span>Total Price</span>
+                                    <span>Total Bayar</span>
                                     <strong id="totalPriceDisplay" class="text-blue">Rp 0</strong>
                                 </div>
                             </div>
 
                             <div id="creditAlert" class="credit-alert" style="display:none;">
                                 <i data-lucide="wallet"></i>
-                                <span>Customer Credit: <strong id="creditAmount">Rp 0</strong></span>
+                                <span>Saldo Kredit: <strong id="creditAmount">Rp 0</strong></span>
                             </div>
 
                             <button type="submit" id="btnSubmitForm" class="btn btn-primary full-width">
-                                Lanjut Pembayaran
+                                Lanjut Pembayaran <i data-lucide="arrow-right"></i>
                             </button>
                         </form>
                     </div>
@@ -111,9 +122,17 @@
         </div>
 
         <div id="payment" class="section payment-section">
+            <div class="step-indicator">
+                <span class="step active">1. Data</span>
+                <span class="step-line"></span>
+                <span class="step current">2. Bayar</span>
+                <span class="step-line"></span>
+                <span class="step">3. Selesai</span>
+            </div>
+
             <div class="text-center payment-header">
-                <h2>Pembayaran QRIS</h2>
-                <p>Silakan scan QRIS untuk menyelesaikan pembayaran</p>
+                <h2>Selesaikan Pembayaran</h2>
+                <p>Scan QRIS menggunakan aplikasi E-Wallet atau Mobile Banking Anda.</p>
             </div>
             
             <div class="payment-card qris-card-wrapper">
@@ -124,22 +143,24 @@
                 
                 <div class="qris-body" id="qrisBoxContainer">
                     <div class="qris-image">
-                        <i data-lucide="qr-code" style="width: 100px; height: 100px; color: var(--blue);"></i>
+                        <i data-lucide="qr-code" stroke-width="1.5"></i>
                     </div>
                 </div>
 
                 <div class="payment-amount-box">
-                    <span>Total Bayar</span>
+                    <span>Total Tagihan</span>
                     <h3 id="qrisAmount" class="text-blue">Rp 0</h3>
-                    <p style="font-size:12px; color:#64748b; margin-top:5px;">Kode: <strong id="qrisBookingCode"></strong></p>
+                    <div class="booking-badge mt-2">Kode: <strong id="qrisBookingCode"></strong></div>
                 </div>
 
-                <div class="payment-method-box" style="margin: 0 30px 20px; text-align: left;">
-                    <label style="font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 8px; display: block; letter-spacing: 0.5px;">METODE PEMBAYARAN</label>
-                    <select id="paymentMethod" onchange="togglePaymentView()" style="border-color: var(--border); font-weight: 600; color: var(--text-main);">
-                        <option value="qris">QRIS</option>
-                        <option value="credit" id="creditOption">Gunakan Saldo Kredit</option>
-                    </select>
+                <div class="payment-method-box">
+                    <label>PILIH METODE PEMBAYARAN</label>
+                    <div class="custom-select-wrapper">
+                        <select id="paymentMethod" onchange="togglePaymentView()">
+                            <option value="qris">QRIS (Semua Bank / E-Wallet)</option>
+                            <option value="credit" id="creditOption">Gunakan Saldo Kredit</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="payment-actions">
@@ -147,65 +168,93 @@
                         <i data-lucide="check-circle"></i> Saya Sudah Bayar
                     </button>
                     <div class="countdown">
-                        <i data-lucide="timer"></i> Selesaikan pembayaran dalam <span class="text-danger">14:59</span>
+                        <i data-lucide="timer"></i> Bayar sebelum <span id="countdownDisplay" class="text-danger">00:00</span>
                     </div>
                 </div>
 
                 <div class="payment-instructions">
-                    <strong>Cara Pembayaran:</strong>
+                    <div class="instruction-title"><i data-lucide="help-circle"></i> Cara Pembayaran</div>
                     <ol>
-                        <li>Buka aplikasi e-wallet (Gopay, OVO, Dana) atau Mobile Banking Anda.</li>
-                        <li>Pilih menu "Bayar" atau "Scan" dan arahkan kamera ke kode QR di atas.</li>
-                        <li>Pastikan nama merchant adalah PS Hub.</li>
+                        <li>Buka aplikasi GoPay, OVO, Dana, atau Mobile Banking.</li>
+                        <li>Pilih menu <strong>Scan QR</strong>.</li>
+                        <li>Arahkan kamera ke kode QRIS di atas.</li>
+                        <li>Pastikan nama merchant adalah <strong>PS Hub</strong>.</li>
                     </ol>
                 </div>
             </div>
         </div>
 
         <div id="success" class="section text-center">
-            <h2 class="section-title-center">Lounge Reserve</h2>
+            <h2 class="section-title-center">Receipt Reservasi</h2>
             <div class="status-card success-card">
                 <div class="icon-circle success">
-                    <i data-lucide="check" stroke-width="3"></i>
+                    <i data-lucide="check-circle" stroke-width="2.5"></i>
                 </div>
-                <h2>Pembayaran Berhasil</h2>
-                <p>Reservasi Anda telah terkonfirmasi</p>
+                <h2>Pembayaran Berhasil!</h2>
+                <p>Reservasi Anda telah dikonfirmasi dan jadwal telah diamankan.</p>
                 
                 <div class="booking-code-box">
-                    <span>KODE BOOKING</span>
-                    <h1 id="finalBookingCode" class="text-blue">PS5-0000</h1>
+                    <span>KODE BOOKING ANDA</span>
+                    <div class="code-copy-wrapper">
+                        <h1 id="finalBookingCode" class="text-blue">PS5-0000</h1>
+                        <button class="btn-icon" onclick="copyBookingCode()" title="Salin Kode">
+                            <i data-lucide="copy"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div class="details-grid">
                 <div class="detail-card">
-                    <h3>Detail Pembayaran</h3>
-                    <div class="detail-row"><span>Metode</span><strong id="succMethod">QRIS</strong></div>
-                    <div class="detail-row"><span>Status</span><span class="badge badge-success">BERHASIL</span></div>
-                    <div class="detail-row"><span>Waktu</span><strong id="succTime">-</strong></div>
+                    <h3><i data-lucide="receipt"></i> Detail Transaksi</h3>
+                    <div class="detail-row"><span>Metode Bayar</span><strong id="succMethod">QRIS</strong></div>
+                    <div class="detail-row"><span>Status</span><span class="badge badge-success">LUNAS</span></div>
+                    <div class="detail-row"><span>Waktu Bayar</span><strong id="succTime">-</strong></div>
                     <div class="summary-divider"></div>
                     <div class="detail-row total"><span>Total Bayar</span><strong id="succTotal" class="text-blue">Rp 0</strong></div>
                 </div>
                 <div class="detail-card">
-                    <h3>Detail Reservasi</h3>
-                    <div class="detail-row column"><span>NAMA PEMESAN</span><strong id="succName">-</strong></div>
-                    <div class="detail-row">
-                        <div class="column"><span>UNIT PS </span><strong id="succUnit">-</strong></div>
-                        <div class="column text-right"><span>DURASI</span><strong id="succDuration">- Jam</strong></div>
+                    <h3><i data-lucide="gamepad-2"></i> Rincian Bermain</h3>
+                    
+                    <div class="detail-row flex-column">
+                        <span class="lbl">Nama Pemain</span>
+                        <strong id="succName">-</strong>
                     </div>
-                    <div class="detail-row column"><span>WAKTU BERMAIN</span><strong id="succPlayTime">-</strong></div>
-                    <div class="detail-row"><i data-lucide="phone" style="width:14px;height:14px;color:var(--blue);"></i> <strong id="succPhone">-</strong></div>
+                    
+                    <div class="detail-row">
+                        <div class="flex-column">
+                            <span class="lbl">Unit Konsol</span>
+                            <strong id="succUnit">-</strong>
+                        </div>
+                        <div class="flex-column text-right">
+                            <span class="lbl">Durasi</span>
+                            <strong><span id="succDuration">-</span> Jam</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-row flex-column">
+                        <span class="lbl">Jadwal Main</span>
+                        <strong id="succPlayTime" class="text-blue">-</strong>
+                    </div>
+                    
+                    <div class="detail-row mt-2">
+                        <span class="lbl">Kontak</span>
+                        <strong class="contact-align">
+                            <i data-lucide="phone" class="icon-sm"></i> 
+                            <span id="succPhone">-</span>
+                        </strong>
+                    </div>
                 </div>
             </div>
 
             <div class="info-alert">
-                <i data-lucide="info"></i>
-                <p><strong>Catatan:</strong> Simpan kode booking ini untuk cek status atau pembatalan reservasi.</p>
+                <div class="alert-icon"><i data-lucide="info"></i></div>
+                <p>Simpan atau screenshot kode booking ini. Gunakan menu <strong>Cek Reservasi</strong> jika Anda ingin melihat status atau melakukan pembatalan.</p>
             </div>
 
             <div class="action-buttons-row">
-                <button class="btn btn-primary full-width" onclick="location.reload()">Kembali ke Beranda</button>
-                <button class="btn btn-secondary full-width" onclick="showSection('check')">Cek Reservasi</button>
+                <button class="btn btn-outline full-width" onclick="location.reload()"><i data-lucide="home"></i> Halaman Utama</button>
+                <button class="btn btn-primary full-width" onclick="showSection('check')"><i data-lucide="search"></i> Lacak Reservasi</button>
             </div>
         </div>
 
@@ -213,65 +262,44 @@
             <div class="failed-layout">
                 <div class="failed-content">
                     <div class="icon-circle danger">
-                        <i data-lucide="activity" stroke-width="3"></i>
+                        <i data-lucide="x-circle" stroke-width="2.5"></i>
                     </div>
-                    <h1 class="failed-title">Pembayaran Gagal</h1>
-                    <p class="failed-desc">Maaf, kami tidak dapat memproses transaksi Anda saat ini.</p>
+                    <h1 class="failed-title">Transaksi Gagal</h1>
+                    <p class="failed-desc">Mohon maaf, kami tidak dapat memverifikasi pembayaran Anda. Waktu sesi telah habis atau terjadi gangguan.</p>
                     
-                    <div class="failed-code-box">
-                        <span>Kode Booking</span>
-                        <span class="badge-blue" id="failBookingCode">PS5-0000</span>
+                    <div class="booking-code-box" style="margin-top:0; margin-bottom: 30px;">
+                        <span>KODE REFERENSI</span>
+                        <h2 id="failBookingCode" class="text-danger mt-1">PS5-0000</h2>
                     </div>
 
                     <div class="reasons-box">
-                        <p><strong><i data-lucide="info"></i> Kemungkinan Penyebab:</strong></p>
+                        <p class="mb-3"><strong>Kemungkinan Penyebab:</strong></p>
                         <ul>
-                            <li><i data-lucide="qr-code"></i> QRIS belum dibayar atau masa berlaku habis</li>
-                            <li><i data-lucide="x-circle"></i> Transaksi dibatalkan oleh sistem atau pengguna</li>
-                            <li><i data-lucide="wifi-off"></i> Koneksi terputus saat proses verifikasi</li>
+                            <li><i data-lucide="clock"></i> Melewati batas waktu pembayaran 15 menit.</li>
+                            <li><i data-lucide="smartphone"></i> Anda menutup aplikasi E-Wallet sebelum selesai.</li>
+                            <li><i data-lucide="wifi-off"></i> Gangguan koneksi internet saat verifikasi.</li>
                         </ul>
                     </div>
 
-                    <div class="warning-alert">
-                        <strong>Catatan:</strong> Gunakan kode booking untuk melanjutkan pembayaran atau konfirmasi ke admin jika Anda merasa sudah melakukan pembayaran.
-                    </div>
-
                     <div class="action-buttons-row mt-4">
-                        <button class="btn btn-secondary full-width" onclick="location.reload()"><i data-lucide="home"></i> Kembali ke Beranda</button>
-                        <button class="btn btn-outline full-width"><i data-lucide="headphones"></i> Hubungi Admin</button>
+                        <button class="btn btn-primary full-width" onclick="location.reload()"><i data-lucide="refresh-cw"></i> Coba Booking Ulang</button>
+                        <button class="btn btn-outline full-width"><i data-lucide="message-circle"></i> Bantuan Admin</button>
                     </div>
                 </div>
 
-                <div class="failed-sidebar">
+                <div class="failed-sidebar hidden-mobile">
                     <div class="summary-card">
-                        <h3>Ringkasan Pesanan</h3>
+                        <h3>Data Pesanan (Batal)</h3>
                         <div class="product-item">
-                            <div class="product-icon"><i data-lucide="monitor" style="width: 30px; height: 30px; color: white;"></i></div>
+                            <div class="product-icon"><i data-lucide="monitor"></i></div>
                             <div>
                                 <strong id="failUnitName">PlayStation Unit</strong>
-                                <span>Lounge VIP • <span id="failDuration">0</span> Jam</span>
+                                <span>Durasi: <span id="failDuration">0</span> Jam</span>
                             </div>
                         </div>
-                        <div class="summary-row"><span>Harga Sewa</span><strong id="failSubtotal">Rp 0</strong></div>
-                        <div class="summary-row"><span>Biaya Layanan</span><strong>Rp 0</strong></div>
+                        <div class="summary-row"><span>Subtotal</span><strong id="failSubtotal">Rp 0</strong></div>
                         <div class="summary-divider"></div>
-                        <div class="summary-row total"><span>Total Tagihan</span><strong id="failTotal" class="text-blue">Rp 0</strong></div>
-                        
-                        <div class="payment-method-box mt-3">
-                            <i data-lucide="wallet"></i>
-                            <div>
-                                <span>METODE PEMBAYARAN</span>
-                                <strong>QRIS / E-Wallet</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="secure-badge mt-3">
-                        <i data-lucide="shield-check" class="text-blue"></i>
-                        <div>
-                            <strong>Transaksi Aman</strong>
-                            <p>Setiap transaksi di PS Hub dilindungi oleh enkripsi standar untuk keamanan data Anda.</p>
-                        </div>
+                        <div class="summary-row total"><span>Total</span><strong id="failTotal">Rp 0</strong></div>
                     </div>
                 </div>
             </div>
@@ -279,16 +307,23 @@
 
         <div id="check" class="section">
             <div class="check-container">
-                <div class="form-card text-center">
-                    <h2 style="margin-bottom: 10px;">Lacak Reservasi Anda</h2>
-                    <p style="color: var(--text-light); margin-bottom: 20px; font-size: 14px;">Masukkan kode booking untuk melihat status atau pembatalan.</p>
-                    <div class="search-box" style="flex-direction: column; gap: 12px; max-width: 450px;">
-                    <input type="text" id="checkBooking" placeholder="Kode Booking (Cth: PSXXXXX)" class="large-input">
-                    <input type="number" id="checkPhone" placeholder="Nomor WhatsApp (Cth: 0812...)" class="large-input">
-                    <button class="btn btn-primary full-width" onclick="checkReservation()" style="padding: 18px;">Cari Reservasi</button>
+                <div class="form-card text-center check-header-card">
+                    <div class="icon-circle" style="background: var(--blue-light); color: var(--blue); width: 60px; height:60px;">
+                        <i data-lucide="search"></i>
+                    </div>
+                    <h2>Lacak Reservasi</h2>
+                    <p class="text-muted">Masukkan kombinasi kode booking dan nomor WhatsApp untuk melihat detail pesanan atau melakukan pembatalan.</p>
+                    
+                    <div class="search-box">
+                        <input type="text" id="checkBooking" placeholder="Kode Booking (cth: PS123AB)" class="large-input">
+                        <input type="tel" id="checkPhone" placeholder="No WhatsApp (cth: 0812...)" class="large-input">
+                        <button id="btnSearchRes" class="btn btn-primary" onclick="checkReservation()">
+                            Cari Data
+                        </button>
+                    </div>
                 </div>
-                </div>
-                <div id="checkResult" class="table-container mt-4"></div>
+                
+                <div id="checkResult" class="check-result-container mt-4"></div>
             </div>
         </div>
     </main>
@@ -296,69 +331,23 @@
     <div id="scheduleModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">Detail Jadwal</h3>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <div>
+                    <h3 id="modalTitle">Detail Jadwal</h3>
+                    <p class="modal-subtitle">Status ketersediaan hari ini</p>
+                </div>
+                <button class="close-btn" onclick="closeModal()"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
-                <ul id="modalList" class="schedule-list"></ul>
-                <button class="btn btn-secondary full-width mt-3" onclick="closeModal()">TUTUP</button>
+                <div id="modalList" class="schedule-list"></div>
+                <button class="btn btn-primary full-width mt-4" onclick="closeModal()">Tutup & Lanjutkan</button>
             </div>
         </div>
     </div>
 
+    <div id="toast" class="toast">Kode disalin!</div>
+
     <script src="/api/config.js"></script>
     <script src="js/supabase.js"></script>
     <script src="js/customer.js"></script>
-    
-    <script>
-        lucide.createIcons();
-        
-        window.showSection = function(id) {
-            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            
-            // Sync nav buttons
-            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-            if(id === 'home' || id === 'check') {
-                event.target.classList.add('active');
-            }
-            window.scrollTo(0,0);
-        };
-
-        window.renderUnits = function() {
-            const container = document.getElementById('unitContainer');
-            container.innerHTML = '';
-            unitsData.forEach(unit => {
-                const div = document.createElement('div');
-                div.className = 'unit-card';
-                div.id = `card-${unit.id}`;
-                
-                div.onclick = () => { 
-                    selectUnit(unit, div, false); 
-                    // Tampilkan form (khusus mobile yg mungkin digeser kebawah)
-                    const formContainer = document.getElementById('formContainerWrapper');
-                    if(window.innerWidth <= 768) {
-                        formContainer.scrollIntoView({behavior: "smooth", block: "start"});
-                    }
-                };
-                div.ondblclick = () => openModal(unit);
-                
-                let typeText = unit.unit_code.includes('5') ? 'PREMIUM SLOT' : 'CLASSIC SLOT';
-                
-                div.innerHTML = `
-                    <div class="uc-header">
-                        <span class="uc-type">${typeText}</span>
-                        <div id="status-${unit.id}" class="uc-badge badge-gray">Memuat...</div>
-                    </div>
-                    <div class="uc-body">
-                        <h2 class="uc-code">${unit.unit_code}</h2>
-                        <div class="uc-price">Rp ${unit.price_per_hour.toLocaleString()}<span>/jam</span></div>
-                    </div>
-                    <button class="uc-btn">Pilih Unit Ini</button>
-                `;
-                container.appendChild(div);
-            });
-        };
-    </script>
 </body>
 </html>

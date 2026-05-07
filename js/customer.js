@@ -2,18 +2,44 @@ let unitsData = [];
 let currentBookingsData = [];
 let currentTotal = 0;
 let userCredit = 0; 
-let tempReservationData = null; // Variabel baru untuk menyimpan data sementara sebelum dibayar
+let tempReservationData = null;
+let countdownInterval;
 
+// Helper: Menampilkan toast notifikasi
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.innerText = message;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+}
+
+// Fungsi pindah halaman (tanpa error event)
 function showSection(id) {
+    // Sembunyikan semua section
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    
+    // Tampilkan yang dituju
+    const targetSection = document.getElementById(id);
+    if(targetSection) targetSection.classList.add('active');
+    
+    // Sinkronisasi navigasi atas
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active', 'outline'));
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.add('outline'));
+    
+    const activeBtn = document.getElementById(`nav-${id}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('outline');
+        activeBtn.classList.add('active');
+    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 window.onload = async () => {
+    lucide.createIcons();
     const dateInput = document.getElementById('playDate');
     const timeInput = document.getElementById('startTime');
     
-    // 1. Dapatkan waktu lokal saat ini dengan aman (menghindari bug Timezone UTC)
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -24,118 +50,146 @@ window.onload = async () => {
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const currentTimeStr = `${hours}:${minutes}`;
 
-    // 2. Set default value dan batas minimum ke elemen HTML
     if (dateInput) {
         dateInput.value = todayStr;
-        dateInput.min = todayStr; // Kunci kalender agar tidak bisa pilih tanggal kemarin
+        dateInput.min = todayStr; 
     }
 
     if (timeInput) {
         timeInput.value = currentTimeStr;
-        timeInput.min = currentTimeStr; // Kunci jam agar tidak bisa pilih jam masa lalu
+        timeInput.min = currentTimeStr; 
     }
 
-    // 3. Event Listener Dinamis: Cek jika tanggal diubah
     if (dateInput && timeInput) {
         dateInput.addEventListener('change', (e) => {
-            // Jika tanggal yang dipilih adalah hari ini
             if (e.target.value === todayStr) {
-                timeInput.min = currentTimeStr; // Kembalikan batasan jam
-                
-                // Jika user telanjur input jam masa lalu, reset ke jam sekarang
-                if (timeInput.value < currentTimeStr) {
-                    timeInput.value = currentTimeStr;
-                }
+                timeInput.min = currentTimeStr; 
+                if (timeInput.value < currentTimeStr) timeInput.value = currentTimeStr;
             } else {
-                // Jika pilih tanggal besok atau lusa, hapus batasan jam 
-                // (karena besok pagi tentu saja boleh dipesan)
                 timeInput.removeAttribute('min');
             }
-            
-            // Panggil fungsi bawaan untuk mengecek status unit
             checkUnitStatuses(); 
         });
     }
     
-    // Load data unit dari Supabase
     await loadUnits();
 };
 
 async function loadUnits() {
+    const container = document.getElementById('unitContainer');
+    container.innerHTML = '<div class="loading-state">Memuat data konsol...</div>';
+
     const { data, error } = await supabase.from('playstation_units').select('*').order('unit_code');
-    if (error) return alert("Gagal load database!");
+    if (error) {
+        container.innerHTML = '<div class="error-state">Gagal memuat database. Coba muat ulang halaman.</div>';
+        return;
+    }
     
     unitsData = data;
     renderUnits();
 
+    // Pilih otomatis unit pertama jika ada
     if(unitsData.length > 0) {
-        const firstUnitCard = document.getElementById(`card-${unitsData[0].id}`);
-        selectUnit(unitsData[0], firstUnitCard, false);
+        selectUnit(unitsData[0].id, false);
     }
-    checkUnitStatuses();
+    await checkUnitStatuses();
 }
 
 function renderUnits() {
     const container = document.getElementById('unitContainer');
     container.innerHTML = '';
+
     unitsData.forEach(unit => {
         const div = document.createElement('div');
         div.className = 'unit-card';
         div.id = `card-${unit.id}`;
-        div.onclick = () => selectUnit(unit, div, true);
         
+        let typeText = unit.unit_code.includes('5') ? 'PREMIUM SLOT' : 'CLASSIC SLOT';
+        
+        // PERBAIKAN: Tambahkan tanda kutip tunggal (' ') mengapit ${unit.id}
         div.innerHTML = `
-            <div>
-                <strong>${unit.unit_code}</strong><br>
-                <span class="price-tag">Rp ${unit.price_per_hour.toLocaleString()}/jam</span>
+            <div class="uc-clickable" onclick="selectUnit('${unit.id}', true)">
+                <div class="uc-header">
+                    <span class="uc-type"><i data-lucide="monitor-play" class="icon-sm"></i> ${typeText}</span>
+                    <div id="status-${unit.id}" class="uc-badge badge-gray">Memuat...</div>
+                </div>
+                <div class="uc-body">
+                    <h2 class="uc-code">${unit.unit_code}</h2>
+                    <div class="uc-price">Rp ${unit.price_per_hour.toLocaleString()}<span>/jam</span></div>
+                </div>
             </div>
-            <div class="unit-status" id="status-${unit.id}">
-                <small style="color: gray;">Memuat status...</small>
+            <div class="uc-footer">
+                <button class="btn btn-outline full-width uc-btn-jadwal" onclick="openModal('${unit.id}')">
+                    <i data-lucide="calendar"></i> Lihat Jadwal
+                </button>
             </div>
         `;
         container.appendChild(div);
     });
+    lucide.createIcons();
 }
 
-function selectUnit(unit, el, showPopup = false) {
+function selectUnit(unitId, isUserAction = false) {
+    const unit = unitsData.find(u => u.id === unitId);
+    if(!unit) return;
+
+    // Reset visual state
     document.querySelectorAll('.unit-card').forEach(card => card.classList.remove('selected'));
-    if(el) {
-        el.classList.add('selected');
-        // Update teks tombol unit terpilih
-        document.querySelectorAll('.uc-btn').forEach(btn => btn.innerText = "Pilih Unit Ini");
-        el.querySelector('.uc-btn').innerText = "Unit Terpilih";
-    }
     
+    const cardEl = document.getElementById(`card-${unit.id}`);
+    if(cardEl) cardEl.classList.add('selected');
+    
+    // Update Hidden inputs & Form Summary
     document.getElementById('selectedUnitId').value = unit.id;
     document.getElementById('selectedUnitPrice').value = unit.price_per_hour;
     document.getElementById('summaryUnitCode').innerText = unit.unit_code;
+    
     calculatePrice();
 
-    if (showPopup) openModal(unit);
+    // Auto-scroll ke form HANYA jika klik manual oleh user dan di layar mobile
+    if (isUserAction && window.innerWidth <= 992) {
+        const formContainer = document.getElementById('formContainerWrapper');
+        if(formContainer) formContainer.scrollIntoView({behavior: "smooth", block: "start"});
+    }
 }
 
-function openModal(unit) {
+function openModal(unitId) {
+    const unit = unitsData.find(u => u.id === unitId);
     if(!unit) return;
+
     const modal = document.getElementById('scheduleModal');
     const title = document.getElementById('modalTitle');
     const list = document.getElementById('modalList');
     
-    title.innerText = `Rincian ${unit.unit_code}`;
+    title.innerText = `Jadwal ${unit.unit_code}`;
     const unitBookings = currentBookingsData.filter(r => r.unit_id === unit.id);
     
     list.innerHTML = '';
     if(unitBookings.length === 0) {
-        list.innerHTML = `<li style="color: var(--success); font-weight:bold; list-style:none; margin-left:-20px; text-align:center;">✅ Kosong seharian, jam berapapun bebas dipesan!</li>`;
+        list.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="check-circle" style="color:var(--success); width:48px;height:48px; margin-bottom:10px;"></i>
+                <p><strong>Kosong seharian!</strong><br>Jam berapapun bebas dipesan.</p>
+            </div>`;
     } else {
         unitBookings.forEach(b => {
-            list.innerHTML += `<li>Terisi pada jam: <strong style="color: var(--danger);">${b.start_time.substring(0,5)} - ${b.end_time.substring(0,5)}</strong></li>`;
+            list.innerHTML += `
+                <div class="schedule-item">
+                    <div class="s-icon"><i data-lucide="clock"></i></div>
+                    <div class="s-text">
+                        <span>Terisi pada jam:</span>
+                        <strong>${b.start_time.substring(0,5)} - ${b.end_time.substring(0,5)}</strong>
+                    </div>
+                </div>`;
         });
     }
-    modal.style.display = 'flex';
+    
+    lucide.createIcons();
+    modal.classList.add('show');
 }
 
 function closeModal() {
-    document.getElementById('scheduleModal').style.display = 'none';
+    document.getElementById('scheduleModal').classList.remove('show');
 }
 
 window.onclick = function(event) {
@@ -147,12 +201,15 @@ async function checkUnitStatuses() {
     const playDate = document.getElementById('playDate').value;
     if(!playDate) return;
 
+    // Set loading visual
     unitsData.forEach(unit => {
         const statusDiv = document.getElementById(`status-${unit.id}`);
-        if(statusDiv) statusDiv.innerHTML = `<small style="color: gray;">Memuat...</small>`;
+        if(statusDiv) {
+            statusDiv.className = "uc-badge badge-gray";
+            statusDiv.innerHTML = "Memuat...";
+        }
     });
 
-    // PENTING: Hanya baca status yang benar-benar 'paid' 
     const { data, error } = await supabase
         .from('reservations')
         .select('unit_id, start_time, end_time')
@@ -200,7 +257,6 @@ function calculatePrice() {
     currentTotal = price * duration;
     
     document.getElementById('summaryDuration').innerText = duration;
-    document.getElementById('summarySubtotal').innerText = `Rp ${currentTotal.toLocaleString()}`;
     document.getElementById('totalPriceDisplay').innerText = `Rp ${currentTotal.toLocaleString()}`;
 }
 
@@ -211,10 +267,43 @@ function addHours(timeStr, hours) {
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
 }
 
-// PROSES SUBMIT (TIDAK MASUK DATABASE, HANYA SIMPAN DI MEMORI)
+// Fungsi untuk menjalankan Timer Waktu Mundur dengan Auto-Redirect
+function startCountdown(durationInMinutes) {
+    clearInterval(countdownInterval); 
+
+    let time = durationInMinutes * 60; 
+    const display = document.getElementById('countdownDisplay');
+
+    countdownInterval = setInterval(() => {
+        let minutes = Math.floor(time / 60);
+        let seconds = time % 60;
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        if (display) display.textContent = minutes + ":" + seconds;
+
+        // JIKA WAKTU HABIS
+        if (--time < 0) {
+            clearInterval(countdownInterval);
+            
+            // Berikan feedback sedikit sebelum pindah halaman
+            if (display) display.textContent = "00:00";
+            
+            // Tampilkan alert singkat lalu arahkan ke halaman gagal
+            alert("Waktu pembayaran telah habis. Sesi booking Anda berakhir.");
+            
+            // Panggil fungsi yang sudah ada untuk menampilkan halaman gagal
+            showPaymentFailed();
+        }
+    }, 1000);
+}
+
 async function handleReservation(e) {
     e.preventDefault();
     const unitId = document.getElementById('selectedUnitId').value;
+    if(!unitId) return alert("Pilih unit konsol terlebih dahulu.");
+
     const playDate = document.getElementById('playDate').value;
     const startTimeStr = document.getElementById('startTime').value;
     const duration = document.getElementById('duration').value;
@@ -224,10 +313,10 @@ async function handleReservation(e) {
     const startTime = startTimeStr.length === 5 ? startTimeStr + ":00" : startTimeStr;
     const endTime = addHours(startTime, duration);
 
-    document.getElementById('btnSubmitForm').disabled = true;
-    document.getElementById('btnSubmitForm').innerText = "Memproses...";
+    const btn = document.getElementById('btnSubmitForm');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="lucide-loader animate-spin"></i> Memproses...';
 
-    // Cek ketersediaan awal (siapa tau udah diisi orang lain)
     const { data: conflicts, error: conflictErr } = await supabase
         .from('reservations')
         .select('id')
@@ -244,7 +333,6 @@ async function handleReservation(e) {
 
     const bookingCode = 'PS' + Math.random().toString(36).substr(2, 5).toUpperCase();
     
-    // SIMPAN DATA SEMENTARA DI MEMORI LOKAL (TIDAK KE SUPABASE)
     tempReservationData = {
         booking_code: bookingCode,
         customer_name: custName,
@@ -263,13 +351,13 @@ async function handleReservation(e) {
     const creditOpt = document.getElementById('creditOption');
     
     if (userCredit >= currentTotal) {
-        creditOpt.innerText = `Gunakan Saldo Kredit (Ada Rp ${userCredit.toLocaleString()})`;
+        creditOpt.innerText = `Saldo Kredit (Ada Rp ${userCredit.toLocaleString()})`;
         creditOpt.disabled = false;
     } else if (userCredit > 0) {
-        creditOpt.innerText = `Kredit Tidak Cukup (Hanya Rp ${userCredit.toLocaleString()})`;
+        creditOpt.innerText = `Saldo Kredit Kurang (Hanya Rp ${userCredit.toLocaleString()})`;
         creditOpt.disabled = true;
     } else {
-        creditOpt.innerText = `Saldo Kredit Tidak Tersedia (Rp 0)`;
+        creditOpt.innerText = `Saldo Kredit Kosong`;
         creditOpt.disabled = true;
     }
 
@@ -279,53 +367,39 @@ async function handleReservation(e) {
     togglePaymentView(); 
     resetBtn();
     showSection('payment');
+
+    startCountdown(1);
 }
 
 function togglePaymentView() {
     const method = document.getElementById('paymentMethod').value;
-    
-    // Ambil elemen dengan aman
     const qrisBox = document.getElementById('qrisBoxContainer');
     const btnConfirm = document.getElementById('btnConfirmPayment');
-    const btnShow = document.getElementById('btnShowQris');
-
-    // Update nominal
     const amountDisplay = document.getElementById('qrisAmount');
+    
     if (amountDisplay) amountDisplay.innerText = `Rp ${currentTotal.toLocaleString()}`;
 
     if (method === 'credit') {
         if (qrisBox) qrisBox.style.display = 'none';
-        if (btnShow) btnShow.style.display = 'none';
-        
         if (btnConfirm) {
-            btnConfirm.style.display = 'flex';
-            btnConfirm.innerHTML = `<i data-lucide="wallet"></i> Konfirmasi Pakai Kredit`;
+            btnConfirm.innerHTML = `<i data-lucide="wallet"></i> Konfirmasi Pakai Saldo Kredit`;
             btnConfirm.className = "btn btn-primary full-width";
         }
     } else {
         if (qrisBox) qrisBox.style.display = 'flex'; 
-        if (btnShow) btnShow.style.display = 'none'; // Tombol lama sudah tidak dipakai
-        
         if (btnConfirm) {
-            btnConfirm.style.display = 'flex';
             btnConfirm.innerHTML = `<i data-lucide="check-circle"></i> Saya Sudah Bayar`;
             btnConfirm.className = "btn btn-primary full-width";
         }
     }
-    
-    // Refresh icon dari Lucide setelah mengubah innerHTML
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function showQrisBox() {
-    document.getElementById('btnShowQris').style.display = 'none';
-    document.getElementById('qrisBoxContainer').style.display = 'block';
-    document.getElementById('btnConfirmPayment').style.display = 'block';
+    lucide.createIcons();
 }
 
 function resetBtn() {
-    document.getElementById('btnSubmitForm').disabled = false;
-    document.getElementById('btnSubmitForm').innerText = "Lanjut Pembayaran";
+    const btn = document.getElementById('btnSubmitForm');
+    btn.disabled = false;
+    btn.innerHTML = 'Lanjut Pembayaran <i data-lucide="arrow-right"></i>';
+    lucide.createIcons();
 }
 
 async function confirmPayment() {
@@ -341,12 +415,12 @@ async function confirmPayment() {
     await processPayment(amountPaid, dbMethod);
 }
 
-// PROSES INSERT KE DATABASE SETELAH KLIK BAYAR
 async function processPayment(amountPaid, methodInfo) {
-    document.getElementById('btnConfirmPayment').innerText = "Memproses...";
-    document.getElementById('btnConfirmPayment').disabled = true;
+    clearInterval(countdownInterval);
+    const btn = document.getElementById('btnConfirmPayment');
+    btn.innerHTML = '<i class="lucide-loader animate-spin"></i> Memverifikasi...';
+    btn.disabled = true;
 
-    // 1. CEK ULANG BENTROK (Siapa tau ada yang bayar duluan pas kita lagi di halaman QRIS)
     const { data: conflicts } = await supabase
         .from('reservations')
         .select('id')
@@ -362,7 +436,6 @@ async function processPayment(amountPaid, methodInfo) {
         return;
     }
 
-    // 2. INSERT RESERVASI KE DATABASE (Status Langsung Paid)
     const { data: resData, error: resErr } = await supabase.from('reservations').insert([{
         booking_code: tempReservationData.booking_code,
         customer_name: tempReservationData.customer_name,
@@ -373,32 +446,24 @@ async function processPayment(amountPaid, methodInfo) {
         end_time: tempReservationData.end_time,
         duration_hours: tempReservationData.duration_hours,
         total_price: tempReservationData.total_price,
-        reservation_status: 'paid', // Langsung masuk sebagai paid
+        reservation_status: 'paid', 
         payment_status: 'paid'
     }]).select();
 
     if (resErr) {
-        alert("Gagal memproses pembayaran: " + resErr.message);
-        document.getElementById('btnConfirmPayment').disabled = false;
-        document.getElementById('btnConfirmPayment').innerText = "Coba Lagi";
+        showPaymentFailed();
         return;
     }
 
     const newReservationId = resData[0].id;
 
-    // 3. INSERT DATA PEMBAYARAN
-const { error: payErr } = await supabase.from('payments').insert([{
-    reservation_id: newReservationId,
-    amount: amountPaid,
-    payment_method: methodInfo,
-    created_at: new Date().toISOString()
-}]);
+    const { error: payErr } = await supabase.from('payments').insert([{
+        reservation_id: newReservationId,
+        amount: amountPaid,
+        payment_method: methodInfo,
+        created_at: new Date().toISOString()
+    }]);
 
-if (payErr) {
-    alert("Reservasi berhasil, tetapi data pembayaran gagal disimpan: " + payErr.message);
-    return;
-}
-    // 4. POTONG SALDO KREDIT (Jika pakai opsi kredit)
     if(document.getElementById('paymentMethod').value === 'credit') {
         await supabase.from('credits')
             .update({ credit_status: 'used', used_at: new Date() })
@@ -423,85 +488,104 @@ if (payErr) {
     document.getElementById('succTotal').innerText = `Rp ${tempReservationData.total_price.toLocaleString()}`;
     
     document.getElementById('succName').innerText = tempReservationData.customer_name;
-    document.getElementById('succUnit').innerText = document.getElementById('summaryUnitCode').innerText; // Ambil dari UI
+    document.getElementById('succUnit').innerText = document.getElementById('summaryUnitCode').innerText; 
     document.getElementById('succDuration').innerText = tempReservationData.duration_hours;
     document.getElementById('succPlayTime').innerText = `${tempReservationData.play_date}, ${tempReservationData.start_time.substring(0,5)} - ${tempReservationData.end_time.substring(0,5)}`;
     document.getElementById('succPhone').innerText = tempReservationData.phone;
-
     document.getElementById('finalBookingCode').innerText = tempReservationData.booking_code;
+    
     showSection('success');
 }
 
 function showPaymentFailed() {
-    // Populate data ke halaman gagal
     document.getElementById('failBookingCode').innerText = tempReservationData ? tempReservationData.booking_code : "N/A";
     document.getElementById('failUnitName').innerText = document.getElementById('summaryUnitCode').innerText || "PlayStation Unit";
     document.getElementById('failDuration').innerText = tempReservationData ? tempReservationData.duration_hours : "0";
     document.getElementById('failSubtotal').innerText = `Rp ${(currentTotal || 0).toLocaleString()}`;
     document.getElementById('failTotal').innerText = `Rp ${(currentTotal || 0).toLocaleString()}`;
-    
+    const desc = document.querySelector('.failed-desc');
+    if(desc) desc.innerText = "Maaf, sesi pembayaran Anda telah berakhir karena melewati batas waktu 15 menit.";
     showSection('failed');
+}
+
+function copyBookingCode() {
+    const code = document.getElementById('finalBookingCode').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        showToast("Kode Booking berhasil disalin!");
+    });
 }
 
 async function checkReservation() {
     const booking = document.getElementById('checkBooking').value;
-    const phone = document.getElementById('checkPhone').value; // Ambil input nomor HP
+    const phone = document.getElementById('checkPhone').value; 
+    const resultDiv = document.getElementById('checkResult');
+    const btn = document.getElementById('btnSearchRes');
 
-    // Validasi: pastikan kedua field terisi
     if(!booking || !phone) {
-        return alert("Kode Booking dan Nomor WhatsApp wajib diisi untuk verifikasi data!");
+        showToast("Lengkapi Kode Booking dan Nomor WhatsApp.");
+        return;
     }
 
-    // Tampilkan loading sederhana pada tombol (opsional)
-    const resultDiv = document.getElementById('checkResult');
-    resultDiv.innerHTML = "<p class='text-center'>Mencari data...</p>";
+    btn.disabled = true;
+    btn.innerHTML = 'Mencari...';
+    resultDiv.innerHTML = '<div class="loading-state">Mencari data reservasi...</div>';
 
     const { data, error } = await supabase
         .from('reservations')
         .select('*, playstation_units(unit_code)')
         .eq('booking_code', booking)
-        .eq('phone', phone) // Tambahkan filter verifikasi nomor HP
+        .eq('phone', phone) 
         .order('created_at', { ascending: false });
         
+    btn.disabled = false;
+    btn.innerHTML = 'Cari Data';
+
     if (error) {
-        console.error(error);
-        return resultDiv.innerHTML = "<p class='text-center text-danger'>Terjadi kesalahan koneksi.</p>";
+        return resultDiv.innerHTML = "<div class='error-state'>Terjadi kesalahan jaringan. Coba lagi.</div>";
     }
     
     if(!data || data.length === 0) {
         return resultDiv.innerHTML = `
-            <div class="text-center" style="padding: 20px;">
-                <p>Data tidak ditemukan.</p>
-                <small style="color: var(--text-light);">Pastikan kombinasi Kode Booking dan Nomor HP sudah benar.</small>
+            <div class="empty-state" style="padding: 40px 20px;">
+                <i data-lucide="search-x" style="width: 40px; height: 40px; color: var(--text-light); margin-bottom: 10px;"></i>
+                <p><strong>Data tidak ditemukan.</strong></p>
+                <small class="text-muted">Pastikan Kode Booking dan Nomor HP sudah benar.</small>
             </div>
         `;
     }
 
-    // Render tabel hasil (Logika tabel tetap sama seperti sebelumnya)
-    let html = '<table><tr><th>Kode</th><th>Unit</th><th>Jadwal</th><th>Harga</th><th>Status</th><th>Aksi</th></tr>';
+    // Render as responsive Cards instead of Table
+    let html = '<div class="reservation-cards-grid">';
     data.forEach(r => {
         let btnStr = '';
         if(r.reservation_status === 'paid') {
-            btnStr = `<button class="btn-danger" onclick='cancelReservation(${JSON.stringify(r)})'>Batalkan</button>`;
+            btnStr = `<button class="btn btn-danger-outline full-width" onclick='cancelReservation(${JSON.stringify(r)})'><i data-lucide="x-circle"></i> Batalkan Pesanan</button>`;
         }
         
         let statusBadge = r.reservation_status === 'paid' ? 'badge-success' : 'badge-gray';
+        let statusText = r.reservation_status === 'paid' ? 'AKTIF / LUNAS' : r.reservation_status.replace('_', ' ').toUpperCase();
 
-        html += `<tr>
-            <td><strong>${r.booking_code}</strong></td>
-            <td>${r.playstation_units.unit_code}</td>
-            <td><small>${r.play_date}<br>${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</small></td>
-            <td>Rp ${r.total_price.toLocaleString()}</td>
-            <td><span class="badge ${statusBadge}">${r.reservation_status}</span></td>
-            <td>${btnStr}</td>
-        </tr>`;
+        html += `
+        <div class="res-card">
+            <div class="res-card-header">
+                <span class="res-code">${r.booking_code}</span>
+                <span class="badge ${statusBadge}">${statusText}</span>
+            </div>
+            <div class="res-card-body">
+                <div class="rc-row"><span>Unit Konsol</span><strong>${r.playstation_units.unit_code}</strong></div>
+                <div class="rc-row"><span>Jadwal Main</span><strong>${r.play_date} • ${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</strong></div>
+                <div class="rc-row"><span>Total Bayar</span><strong class="text-blue">Rp ${r.total_price.toLocaleString()}</strong></div>
+            </div>
+            <div class="res-card-footer">${btnStr}</div>
+        </div>`;
     });
-    html += '</table>';
+    html += '</div>';
     resultDiv.innerHTML = html;
+    lucide.createIcons();
 }
 
 async function cancelReservation(reservation) {
-    const warningText = `Yakin ingin membatalkan reservasi ini?\n\nPERINGATAN: Jika dibatalkan kurang dari 1 jam sebelum main, data Nama dan Nomor HP Anda akan disimpan agar nominal Rp ${reservation.total_price.toLocaleString()} yang sudah dibayar bisa dipakai sebagai saldo kredit di pemesanan berikutnya.`;
+    const warningText = `Yakin ingin membatalkan reservasi ini?\n\nPERINGATAN: Jika dibatalkan lebih dari 1 jam sebelum main, nominal Rp ${reservation.total_price.toLocaleString()} akan diubah menjadi Saldo Kredit untuk pemesanan berikutnya.`;
     
     if(!confirm(warningText)) return;
 
@@ -512,12 +596,12 @@ async function cancelReservation(reservation) {
     let newStatus = '';
     let message = '';
 
-    if (diffHours >= 1) {
+    if (diffHours <= 1) {
         newStatus = 'cancelled_refund';
         message = 'Reservasi dibatalkan. Dana akan di-refund secara manual oleh admin.';
     } else {
         newStatus = 'converted_to_credit';
-        message = `Pembatalan dilakukan kurang dari 1 jam.\nNominal Rp ${reservation.total_price.toLocaleString()} berhasil diubah menjadi Saldo Kredit!\n\nGunakan Nama dan No HP yang sama untuk memakai saldo ini di pemesanan berikutnya.`;
+        message = `Pembatalan dilakukan lebih dari 1 jam.\nNominal Rp ${reservation.total_price.toLocaleString()} diubah menjadi Saldo Kredit!\n\nGunakan No HP yang sama untuk memakai saldo ini.`;
         await supabase.from('credits').insert([{ reservation_id: reservation.id, phone: reservation.phone, amount: reservation.total_price }]);
     }
 
@@ -526,6 +610,7 @@ async function cancelReservation(reservation) {
     checkReservation(); 
 }
 
+// Realtime Listener
 supabase.channel('public:reservations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, payload => {
       checkUnitStatuses();

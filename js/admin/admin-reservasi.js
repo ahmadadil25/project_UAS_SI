@@ -1,6 +1,7 @@
 // admin-reservasi.js
 // Berisi fungsi dashboard, daftar reservasi, detail reservasi, edit status,
 // serta pencarian/filter data reservasi.
+// Revisi: perhitungan unit aktif diperbaiki agar jadwal lewat tengah malam tetap terbaca.
 
 async function loadAdminData() {
     const { data, error } = await supabase
@@ -140,8 +141,8 @@ function renderReservationTable(data) {
 }
 
 async function updateDashboardSummary(data) {
-    // Gunakan cara manual yang aman dari perbedaan Timezone UTC/Local
     const now = new Date();
+
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
@@ -162,11 +163,18 @@ async function updateDashboardSummary(data) {
     let finishedCount = 0;
     let refundCount = 0;
     let creditCount = 0;
-    let activeUnitIds = new Set();
+
+    const activeUnitIds = new Set();
 
     data.forEach(r => {
         if (r.play_date === yesterdayStr) {
             yesterdayCount++;
+        }
+
+        // Unit aktif dihitung berdasarkan waktu asli.
+        // Ini aman untuk jadwal normal dan jadwal yang lewat tengah malam.
+        if (r.reservation_status === 'paid' && isReservationRunningNow(r, now)) {
+            activeUnitIds.add(String(r.unit_id));
         }
 
         if (r.play_date === todayStr) {
@@ -176,19 +184,10 @@ async function updateDashboardSummary(data) {
                 revenue += Number(r.total_price || 0);
             }
 
+            if (r.reservation_status === 'pending_payment') pendingCount++;
             if (r.reservation_status === 'finished') finishedCount++;
             if (r.reservation_status === 'cancelled_refund') refundCount++;
             if (r.reservation_status === 'converted_to_credit') creditCount++;
-
-            // Cek unit yang aktif saat ini tanpa hit query lagi
-            if (r.reservation_status === 'paid') {
-                const start = String(r.start_time || '').substring(0, 5);
-                const end = String(r.end_time || '').substring(0, 5);
-
-                if (currentTime >= start && currentTime < end) {
-                    activeUnitIds.add(String(r.unit_id));
-                }
-            }
         }
     });
 
@@ -223,9 +222,8 @@ async function updateDashboardSummary(data) {
     }
 
     renderDashboardRecentReservations(data || []);
-    renderDashboardDailySchedule(data || [], todayStr, currentTime);
+    renderDashboardDailySchedule(data || [], todayStr, currentTime, now);
 
-    // Kirim daftar unit aktif agar dashboard bisa menampilkan unit tersedia.
     await updateUnitDashboardSummary(activeUnitIds);
 }
 
@@ -249,10 +247,7 @@ async function updateUnitDashboardSummary(activeUnitIdsInput) {
             ? activeUnitIdsInput
             : new Set();
 
-        const activeCount = activeUnitIdsInput instanceof Set
-            ? activeSet.size
-            : Number(activeUnitIdsInput || 0);
-
+        const activeCount = activeSet.size;
         const totalCount = unitRows.length;
         const availableCount = Math.max(totalCount - activeCount, 0);
         const availablePercent = totalCount > 0
@@ -294,6 +289,7 @@ function updateReservationFilterInfo(filteredCount, totalCount) {
 
 function getStatusLabel(status) {
     const labels = {
+        pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
         cancelled_refund: 'Refund',
@@ -318,6 +314,72 @@ function getStatusBadgeClass(status) {
 function formatTime(timeValue) {
     if (!timeValue) return '-';
     return String(timeValue).substring(0, 5);
+}
+
+function buildLocalDateTime(dateValue, timeValue) {
+    if (!dateValue || !timeValue) return null;
+
+    const dateParts = String(dateValue).split('-').map(Number);
+    const timeParts = String(timeValue).split(':').map(Number);
+
+    if (dateParts.length < 3 || timeParts.length < 2) return null;
+
+    const year = dateParts[0];
+    const month = dateParts[1];
+    const day = dateParts[2];
+
+    const hour = timeParts[0] || 0;
+    const minute = timeParts[1] || 0;
+    const second = timeParts[2] || 0;
+
+    return new Date(year, month - 1, day, hour, minute, second, 0);
+}
+
+function getReservationStartDateTime(reservation) {
+    return buildLocalDateTime(reservation.play_date, reservation.start_time);
+}
+
+function getReservationEndDateTime(reservation) {
+    const startDateTime = getReservationStartDateTime(reservation);
+    const endDateTime = buildLocalDateTime(reservation.play_date, reservation.end_time);
+
+    if (!startDateTime || !endDateTime) return null;
+
+    // Jika end_time lebih kecil dari start_time, berarti jadwal lewat tengah malam.
+    // Contoh: 23:26 - 01:26, maka end_time dianggap tanggal besok.
+    if (endDateTime <= startDateTime) {
+        endDateTime.setDate(endDateTime.getDate() + 1);
+    }
+
+    return endDateTime;
+}
+
+function isReservationRunningNow(reservation, now = new Date()) {
+    if (!reservation) return false;
+    if (reservation.reservation_status !== 'paid') return false;
+
+    const startDateTime = getReservationStartDateTime(reservation);
+    const endDateTime = getReservationEndDateTime(reservation);
+
+    if (!startDateTime || !endDateTime) return false;
+
+    return now >= startDateTime && now < endDateTime;
+}
+
+function isTimeInRange(currentTime, startTime, endTime) {
+    if (!currentTime || !startTime || !endTime) return false;
+
+    const current = String(currentTime).substring(0, 5);
+    const start = String(startTime).substring(0, 5);
+    const end = String(endTime).substring(0, 5);
+
+    // Jadwal normal, contoh 19:00 - 21:00
+    if (start <= end) {
+        return current >= start && current < end;
+    }
+
+    // Jadwal lewat tengah malam, contoh 23:00 - 01:00
+    return current >= start || current < end;
 }
 
 function escapeHtml(value) {
@@ -671,14 +733,26 @@ function renderDashboardRecentReservations(data) {
     }).join('');
 }
 
-function renderDashboardDailySchedule(data, todayStr, currentTime) {
+function renderDashboardDailySchedule(data, todayStr, currentTime, now = new Date()) {
     const container = document.getElementById('dashboardDailySchedule');
     if (!container) return;
 
     const todayRows = (data || [])
-        .filter(r => r.play_date === todayStr)
+        .filter(r => {
+            const isTodaySchedule = r.play_date === todayStr;
+            const isRunningOvernight = isReservationRunningNow(r, now);
+
+            return isTodaySchedule || isRunningOvernight;
+        })
         .filter(r => ['paid', 'finished'].includes(r.reservation_status))
-        .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')))
+        .sort((a, b) => {
+            const aRunning = isReservationRunningNow(a, now) ? 0 : 1;
+            const bRunning = isReservationRunningNow(b, now) ? 0 : 1;
+
+            if (aRunning !== bRunning) return aRunning - bRunning;
+
+            return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+        })
         .slice(0, 4);
 
     if (todayRows.length === 0) {
@@ -693,8 +767,8 @@ function renderDashboardDailySchedule(data, todayStr, currentTime) {
     container.innerHTML = todayRows.map(r => {
         const start = String(r.start_time || '').substring(0, 5);
         const end = String(r.end_time || '').substring(0, 5);
-        const isRunning = r.reservation_status === 'paid' && currentTime >= start && currentTime < end;
-        const scheduleLabel = getScheduleLabel(r, currentTime);
+        const isRunning = r.reservation_status === 'paid' && isReservationRunningNow(r, now);
+        const scheduleLabel = getScheduleLabel(r, currentTime, now);
         const unitCode = r.playstation_units ? r.playstation_units.unit_code : '-';
 
         return `
@@ -710,6 +784,7 @@ function renderDashboardDailySchedule(data, todayStr, currentTime) {
                         <span class="schedule-badge">${escapeHtml(scheduleLabel)}</span>
                     </div>
                     <small>${escapeHtml(r.customer_name || '-')} - ${Number(r.duration_hours || 0)} Jam</small>
+                    <small>${escapeHtml(start)} - ${escapeHtml(end)}</small>
                 </div>
             </div>
         `;
@@ -770,19 +845,16 @@ function renderDashboardUnitAvailability(units, activeUnitIds) {
 function formatUnitLabel(unitCode) {
     const value = String(unitCode || '-').trim();
 
-    // Contoh: "PS4 - TV 01" menjadi "PS4-TV01"
     const psTvMatch = value.match(/PS\s*(\d+).*TV\s*(\d+)/i);
     if (psTvMatch) {
         return `PS${psTvMatch[1]}-TV${psTvMatch[2].padStart(2, '0')}`;
     }
 
-    // Contoh: "PS5 VIP-1" menjadi "PS5-VIP1"
     const psVipMatch = value.match(/PS\s*(\d+).*VIP[-\s]*(\d+)/i);
     if (psVipMatch) {
         return `PS${psVipMatch[1]}-VIP${psVipMatch[2]}`;
     }
 
-    // Contoh: "PS4 Reg-4" menjadi "PS4-REG4"
     const psRegMatch = value.match(/PS\s*(\d+).*Reg[-\s]*(\d+)/i);
     if (psRegMatch) {
         return `PS${psRegMatch[1]}-REG${psRegMatch[2]}`;
@@ -833,11 +905,10 @@ function getDashboardStatusInfo(status) {
     };
 }
 
-function getScheduleLabel(reservation, currentTime) {
+function getScheduleLabel(reservation, currentTime, now = new Date()) {
     const start = String(reservation.start_time || '').substring(0, 5);
-    const end = String(reservation.end_time || '').substring(0, 5);
 
-    if (reservation.reservation_status === 'paid' && currentTime >= start && currentTime < end) {
+    if (reservation.reservation_status === 'paid' && isReservationRunningNow(reservation, now)) {
         return 'Running';
     }
 
@@ -849,11 +920,17 @@ function getScheduleLabel(reservation, currentTime) {
         return 'Finished';
     }
 
-    if (start > currentTime) {
+    if (reservation.play_date === getTodayLocalDateString() && start > currentTime) {
         return 'Next';
     }
 
     return 'Scheduled';
+}
+
+function getTodayLocalDateString() {
+    const now = new Date();
+
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 function splitBookingCode(code) {
@@ -884,10 +961,7 @@ function formatDashboardDate(dateValue) {
 }
 
 function isTodayDate(dateValue) {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-    return dateValue === today;
+    return dateValue === getTodayLocalDateString();
 }
 
 function shortUnitCode(unitCode) {

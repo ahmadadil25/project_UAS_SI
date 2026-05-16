@@ -186,7 +186,7 @@ async function updateDashboardSummary(data) {
 
             if (r.reservation_status === 'pending_payment') pendingCount++;
             if (r.reservation_status === 'finished') finishedCount++;
-            if (r.reservation_status === 'cancelled_refund') refundCount++;
+            if (r.reservation_status === 'refund') refundCount++;
             if (r.reservation_status === 'converted_to_credit') creditCount++;
         }
     });
@@ -210,10 +210,10 @@ async function updateDashboardSummary(data) {
         const diff = count - yesterdayCount;
 
         if (diff > 0) {
-            todayTrendText.innerText = `↗ +${diff} vs kemarin`;
+            todayTrendText.innerText = `Naik +${diff} vs kemarin`;
             todayTrendText.className = 'trend-positive';
         } else if (diff < 0) {
-            todayTrendText.innerText = `↘ ${Math.abs(diff)} lebih sedikit dari kemarin`;
+            todayTrendText.innerText = `Turun ${Math.abs(diff)} lebih sedikit dari kemarin`;
             todayTrendText.className = 'trend-negative';
         } else {
             todayTrendText.innerText = 'Stabil dibanding kemarin';
@@ -292,7 +292,7 @@ function getStatusLabel(status) {
         pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
-        cancelled_refund: 'Refund',
+        refund: 'Refund',
         converted_to_credit: 'Credit'
     };
 
@@ -304,7 +304,7 @@ function getStatusBadgeClass(status) {
         return 'badge-paid';
     }
 
-    if (status === 'cancelled_refund' || status === 'converted_to_credit') {
+    if (status === 'refund' || status === 'converted_to_credit') {
         return 'badge-cancelled';
     }
 
@@ -393,6 +393,94 @@ function escapeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+function ensureAdminDialogExists() {
+    if (document.getElementById('adminDialogModal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'adminDialogModal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    modal.style.zIndex = '99999';
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 460px;">
+            <div class="modal-header">
+                <h3 id="adminDialogTitle">Informasi</h3>
+                <button class="close-btn" id="adminDialogClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="adminDialogMessage" style="white-space: pre-line; color: var(--muted); line-height: 1.7; margin-bottom: 20px;"></p>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="adminDialogCancel" class="btn btn-outline-gaming" style="flex:1;">Batal</button>
+                    <button type="button" id="adminDialogOk" class="btn btn-primary" style="flex:1;">Mengerti</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+function showAdminDialog({ title = 'Informasi', message = '', confirmText = 'Mengerti', cancelText = 'Batal', showCancel = false } = {}) {
+    ensureAdminDialogExists();
+
+    const modal = document.getElementById('adminDialogModal');
+    const titleEl = document.getElementById('adminDialogTitle');
+    const messageEl = document.getElementById('adminDialogMessage');
+    const closeBtn = document.getElementById('adminDialogClose');
+    const okBtn = document.getElementById('adminDialogOk');
+    const cancelBtn = document.getElementById('adminDialogCancel');
+
+    return new Promise(resolve => {
+        titleEl.innerText = title;
+        messageEl.innerText = message;
+        okBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        cancelBtn.style.display = showCancel ? 'inline-flex' : 'none';
+
+        const close = result => {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            closeBtn.onclick = null;
+            modal.onclick = null;
+            document.onkeydown = null;
+            resolve(result);
+        };
+
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        closeBtn.onclick = () => close(false);
+        modal.onclick = event => {
+            if (event.target === modal) close(!showCancel);
+        };
+        document.onkeydown = event => {
+            if (event.key === 'Escape') close(false);
+        };
+
+        modal.style.display = 'flex';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'hidden';
+        okBtn.focus();
+    });
+}
+
+function adminAlert(message, title = 'Informasi') {
+    return showAdminDialog({ title, message, confirmText: 'Mengerti' });
+}
+
+function adminConfirm(message, title = 'Konfirmasi') {
+    return showAdminDialog({
+        title,
+        message,
+        confirmText: 'Ya, Lanjutkan',
+        cancelText: 'Batal',
+        showCancel: true
+    });
+}
+
 async function getReservationById(id) {
     const { data, error } = await supabase
         .from('reservations')
@@ -408,15 +496,15 @@ async function getReservationById(id) {
     return data;
 }
 
-function showReservationDetail(id) {
+async function showReservationDetail(id) {
     const reservation = window.adminState.allReservations.find(r => r.id === id);
 
     if (!reservation) {
-        alert("Data reservasi tidak ditemukan.");
+        await adminAlert("Data reservasi tidak ditemukan.", "Data Tidak Ditemukan");
         return;
     }
 
-    alert(
+    await adminAlert(
         `Detail Reservasi\n\n` +
         `Kode Booking : ${reservation.booking_code}\n` +
         `Nama         : ${reservation.customer_name}\n` +
@@ -426,7 +514,8 @@ function showReservationDetail(id) {
         `Jam          : ${formatTime(reservation.start_time)} - ${formatTime(reservation.end_time)}\n` +
         `Durasi       : ${reservation.duration_hours} Jam\n` +
         `Total        : Rp ${Number(reservation.total_price || 0).toLocaleString()}\n` +
-        `Status       : ${getStatusLabel(reservation.reservation_status)}`
+        `Status       : ${getStatusLabel(reservation.reservation_status)}`,
+        "Detail Reservasi"
     );
 }
 
@@ -437,6 +526,7 @@ function ensureStatusModalExists() {
     modal.id = 'statusModal';
     modal.className = 'modal-overlay';
     modal.style.display = 'none';
+    modal.style.zIndex = '99999';
 
     modal.innerHTML = `
         <div class="modal-content">
@@ -472,7 +562,7 @@ function ensureStatusModalExists() {
                     <select id="editReservationStatus" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                         <option value="paid">Paid</option>
                         <option value="finished">Finished</option>
-                        <option value="cancelled_refund">Cancelled Refund</option>
+                        <option value="refund">Refund</option>
                         <option value="converted_to_credit">Converted to Credit</option>
                     </select>
                 </div>
@@ -511,14 +601,15 @@ function ensureStatusModalExists() {
 async function openStatusModal(id) {
     ensureStatusModalExists();
 
-    let reservation = window.adminState.allReservations.find(r => r.id === id);
+    const reservations = window.adminState?.allReservations || [];
+    let reservation = reservations.find(r => r.id === id);
 
     if (!reservation) {
         reservation = await getReservationById(id);
     }
 
     if (!reservation) {
-        alert("Data reservasi tidak ditemukan.");
+        await adminAlert("Data reservasi tidak ditemukan.", "Data Tidak Ditemukan");
         return;
     }
 
@@ -538,12 +629,18 @@ async function openStatusModal(id) {
     document.getElementById('editReservationStatus').value =
         reservation.reservation_status || 'paid';
 
-    document.getElementById('statusModal').style.display = 'flex';
+    const modal = document.getElementById('statusModal');
+    modal.style.display = 'flex';
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    modal.style.zIndex = '99999';
+    document.body.style.overflow = 'hidden';
 }
 
 function closeStatusModal() {
     const modal = document.getElementById('statusModal');
     if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
 }
 
 async function submitStatusChange() {
@@ -552,7 +649,7 @@ async function submitStatusChange() {
     const btn = document.getElementById('btnSaveStatus');
 
     if (!id || !newStatus) {
-        alert("Data status belum lengkap.");
+        await adminAlert("Data status belum lengkap.", "Data Belum Lengkap");
         return;
     }
 
@@ -576,24 +673,25 @@ async function updateStatus(id, status) {
         const reservation = await getReservationById(id);
 
         if (!reservation) {
-            alert("Data reservasi tidak ditemukan.");
+            await adminAlert("Data reservasi tidak ditemukan.", "Data Tidak Ditemukan");
             await loadAdminData();
             return false;
         }
 
         if (reservation.reservation_status === status) {
-            alert("Status tidak berubah.");
+            await adminAlert("Status tidak berubah.", "Tidak Ada Perubahan");
             return false;
         }
 
         if (status === 'converted_to_credit') {
-            const confirmCredit = confirm(
+            const confirmCredit = await adminConfirm(
                 `Yakin ingin mengubah reservasi ini menjadi saldo kredit?\n\n` +
                 `Booking : ${reservation.booking_code}\n` +
                 `Nama    : ${reservation.customer_name}\n` +
                 `No HP   : ${reservation.phone}\n` +
                 `Nominal : Rp ${Number(reservation.total_price || 0).toLocaleString()}\n\n` +
-                `Setelah disimpan, saldo kredit akan otomatis dibuat.`
+                `Setelah disimpan, saldo kredit akan otomatis dibuat.`,
+                "Konversi ke Saldo Kredit"
             );
 
             if (!confirmCredit) {
@@ -601,13 +699,14 @@ async function updateStatus(id, status) {
             }
         }
 
-        if (status === 'cancelled_refund') {
-            const confirmRefund = confirm(
-                `Yakin ingin mengubah reservasi ini menjadi Cancelled Refund?\n\n` +
+        if (status === 'refund') {
+            const confirmRefund = await adminConfirm(
+                `Yakin ingin mengubah reservasi ini menjadi Refund?\n\n` +
                 `Booking : ${reservation.booking_code}\n` +
                 `Nama    : ${reservation.customer_name}\n` +
                 `Nominal : Rp ${Number(reservation.total_price || 0).toLocaleString()}\n\n` +
-                `Status ini menandakan dana perlu dikembalikan secara manual.`
+                `Status ini menandakan dana perlu dikembalikan secara manual.`,
+                "Ubah ke Refund"
             );
 
             if (!confirmRefund) {
@@ -621,7 +720,7 @@ async function updateStatus(id, status) {
             .eq('id', id);
 
         if (error) {
-            alert("Gagal update status: " + error.message);
+            await adminAlert("Gagal update status: " + error.message, "Gagal Update");
             await loadAdminData();
             return false;
         }
@@ -640,12 +739,12 @@ async function updateStatus(id, status) {
             await checkWalkinUnitStatuses();
         }
 
-        alert("Status reservasi berhasil diperbarui.");
+        await adminAlert("Status reservasi berhasil diperbarui.", "Berhasil");
         return true;
 
     } catch (err) {
         console.error(err);
-        alert(err.message || "Terjadi kesalahan saat update status.");
+        await adminAlert(err.message || "Terjadi kesalahan saat update status.", "Terjadi Kesalahan");
         await loadAdminData();
         return false;
     }
@@ -883,7 +982,7 @@ function getDashboardStatusInfo(status) {
             sub: 'Done',
             subClass: 'neutral'
         },
-        cancelled_refund: {
+        refund: {
             main: 'Refund',
             mainClass: 'danger',
             sub: 'Manual',

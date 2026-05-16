@@ -337,6 +337,54 @@ select {
 .close-btn { background: var(--bg-color); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: 0.2s;}
 .close-btn:hover { background: #e2e8f0; color: var(--danger);}
 
+.app-dialog-content {
+    max-width: 440px;
+    text-align: center;
+}
+.app-dialog-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    background: var(--blue-light);
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.app-dialog-icon.danger {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+.app-dialog-icon.success {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.app-dialog-icon i {
+    width: 32px;
+    height: 32px;
+}
+.app-dialog-content h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: var(--text-main);
+}
+.app-dialog-content p {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-line;
+    margin-bottom: 24px;
+}
+.app-dialog-actions {
+    display: flex;
+    gap: 12px;
+}
+.app-dialog-actions .btn {
+    flex: 1;
+}
+
 .schedule-list { margin-top: 20px; max-height: 300px; overflow-y: auto; padding-right: 5px;}
 .schedule-list::-webkit-scrollbar { width: 6px; }
 .schedule-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

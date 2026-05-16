@@ -288,7 +288,7 @@ function calculateLaporanSummary(rows) {
             summary.totalPendapatan += totalPrice;
         }
 
-        if (status === 'cancelled_refund') {
+        if (status === 'refund') {
             summary.refundCount++;
             summary.totalRefund += totalPrice;
         }
@@ -395,7 +395,7 @@ function getLaporanStatusLabel(status) {
     const labels = {
         paid: 'Paid',
         finished: 'Finished',
-        cancelled_refund: 'Refund',
+        refund: 'Refund',
         converted_to_credit: 'Credit'
     };
 
@@ -407,7 +407,7 @@ function getLaporanStatusBadge(status) {
         return 'badge-paid';
     }
 
-    if (status === 'cancelled_refund' || status === 'converted_to_credit') {
+    if (status === 'refund' || status === 'converted_to_credit') {
         return 'badge-cancelled';
     }
 

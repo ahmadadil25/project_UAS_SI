@@ -19,7 +19,20 @@ const ADMIN_BUTTONS = [
     'btn-laporan'
 ];
 
-function switchTab(tabId, btnId) {
+const ADMIN_TAB_BUTTON_MAP = {
+    dashboardTab: 'btn-dash',
+    reservasiTab: 'btn-res',
+    walkinTab: 'btn-walkin',
+    paymentTab: 'btn-payment',
+    kreditTab: 'btn-kredit',
+    laporanTab: 'btn-laporan'
+};
+
+const ADMIN_ACTIVE_TAB_KEY = 'pshubAdminActiveTab';
+
+function switchTab(tabId, btnId, options = {}) {
+    const resolvedBtnId = btnId || ADMIN_TAB_BUTTON_MAP[tabId] || 'btn-dash';
+
     // Paksa semua tab hilang dulu
     ADMIN_TABS.forEach(id => {
         const tab = document.getElementById(id);
@@ -48,10 +61,14 @@ function switchTab(tabId, btnId) {
     }
 
     // Aktifkan tombol sidebar yang dipilih
-    const selectedBtn = document.getElementById(btnId);
+    const selectedBtn = document.getElementById(resolvedBtnId);
 
     if (selectedBtn) {
         selectedBtn.classList.add('active');
+    }
+
+    if (options.save !== false && ADMIN_TAB_BUTTON_MAP[tabId]) {
+        localStorage.setItem(ADMIN_ACTIVE_TAB_KEY, tabId);
     }
 
     // Load data sesuai tab
@@ -74,4 +91,17 @@ function switchTab(tabId, btnId) {
     window.scrollTo(0, 0);
 }
 
+function getSavedAdminTab() {
+    const savedTab = localStorage.getItem(ADMIN_ACTIVE_TAB_KEY);
+
+    if (savedTab && ADMIN_TAB_BUTTON_MAP[savedTab]) {
+        return savedTab;
+    }
+
+    return 'dashboardTab';
+}
+
 window.switchTab = switchTab;
+window.getSavedAdminTab = getSavedAdminTab;
+window.ADMIN_TAB_BUTTON_MAP = ADMIN_TAB_BUTTON_MAP;
+window.ADMIN_ACTIVE_TAB_KEY = ADMIN_ACTIVE_TAB_KEY;

@@ -1155,14 +1155,15 @@ tbody tr:hover {
 
 .schedule-card {
     padding: 15px 16px;
-    background: rgba(30, 41, 59, 0.62);
-    border-left: 4px solid #334155;
+    background: linear-gradient(135deg, rgba(0, 76, 180, 0.92), rgba(37, 99, 235, 0.72));
+    border-left: 4px solid #60a5fa;
     border-radius: 12px;
+    box-shadow: 0 14px 28px rgba(0, 76, 180, 0.22);
 }
 
 .schedule-item.is-running .schedule-card {
-    background: rgba(30, 41, 59, 0.85);
-    border-left-color: #004cb4;
+    background: linear-gradient(135deg, #004cb4, #0b5ed7);
+    border-left-color: #bfdbfe;
 }
 
 .schedule-card-top {
@@ -1179,7 +1180,7 @@ tbody tr:hover {
 }
 
 .schedule-card small {
-    color: #94a3b8;
+    color: #dbeafe;
     font-size: 12px;
 }
 
@@ -1189,15 +1190,15 @@ tbody tr:hover {
     height: 20px;
     padding: 2px 8px;
     border-radius: 999px;
-    background: #334155;
-    color: #94a3b8;
+    background: rgba(219, 234, 254, 0.92);
+    color: #0b5ed7;
     font-size: 10px;
     text-transform: uppercase;
 }
 
 .schedule-item.is-running .schedule-badge {
-    color: #60a5fa;
-    background: rgba(0, 76, 180, 0.2);
+    color: #004cb4;
+    background: #ffffff;
 }
 
 .schedule-empty {
@@ -1837,13 +1838,44 @@ body {
 /* Daily schedule kanan */
 .daily-schedule,
 .daily-schedule-card,
-.schedule-card,
+.daily-schedule-panel,
 .schedule-panel {
     width: 100%;
     min-width: 340px;
     max-width: 355px;
     min-height: 610px;
     border-radius: 22px !important;
+}
+
+#dashboardDailySchedule {
+    max-height: 350px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+#dashboardDailySchedule .schedule-item {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 0;
+}
+
+#dashboardDailySchedule .schedule-card {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+#dashboardDailySchedule .schedule-card-top {
+    align-items: flex-start;
+}
+
+#dashboardDailySchedule .schedule-card small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Supaya bagian unit availability tidak terlalu makan tempat */
@@ -1925,7 +1957,7 @@ table td {
 
     .daily-schedule,
     .daily-schedule-card,
-    .schedule-card,
+    .daily-schedule-panel,
     .schedule-panel {
         min-width: 300px;
         max-width: 315px;
@@ -2433,12 +2465,17 @@ table td {
 
 /* Card unit dibuat lebih pendek agar tidak terpotong */
 .admin-walkin-page .unit-card {
-    min-height: 185px;
-    padding: 16px;
-    border: 2px solid transparent;
-    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    min-height: 188px;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    border-radius: 18px;
     background: #ffffff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .admin-walkin-page .unit-card:hover {
@@ -2449,7 +2486,16 @@ table td {
 .admin-walkin-page .unit-card.selected {
     border-color: #0b5ed7;
     background: #ebf3ff;
-    box-shadow: 0 10px 24px rgba(11, 94, 215, 0.12);
+    box-shadow: 0 0 0 4px rgba(11, 94, 215, 0.10);
+}
+
+.admin-walkin-page .uc-clickable {
+    flex: 1;
+    padding: 20px;
+}
+
+.admin-walkin-page .uc-footer {
+    padding: 0 20px 20px;
 }
 
 /* Header card lebih compact */
@@ -2506,15 +2552,15 @@ table td {
 /* Tombol unit lebih pendek */
 .admin-walkin-page .uc-btn {
     width: 100%;
-    min-height: 40px;
-    margin-top: 18px;
-    padding: 9px 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #f8f9fa;
+    min-height: 44px;
+    margin-top: 0;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: transparent;
     color: #111827;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
     transition: 0.2s ease;
 }
@@ -2523,6 +2569,82 @@ table td {
     background: #0b5ed7;
     color: #ffffff;
     border-color: #0b5ed7;
+}
+
+.walkin-schedule-modal .modal-subtitle {
+    margin: 4px 0 0;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.walkin-schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    margin-bottom: 18px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.walkin-schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.walkin-schedule-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border-radius: 12px;
+    background: #fff7ed;
+    color: #d97706;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.walkin-schedule-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.walkin-schedule-text span,
+.walkin-schedule-empty span {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.walkin-schedule-text strong {
+    color: #111827;
+    font-size: 15px;
+}
+
+.walkin-schedule-empty {
+    padding: 26px 18px;
+    border: 1px solid #dcfce7;
+    border-radius: 14px;
+    background: #f0fdf4;
+    text-align: center;
+}
+
+.walkin-schedule-empty strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #15803d;
+    font-size: 16px;
+}
+
+.walkin-schedule-modal .full-width {
+    width: 100%;
 }
 
 /* Scrollbar rapi */
@@ -2558,8 +2680,16 @@ table td {
     }
 
     .admin-walkin-page .unit-card {
-        min-height: 170px;
-        padding: 15px;
+        min-height: 176px;
+        padding: 0;
+    }
+
+    .admin-walkin-page .uc-clickable {
+        padding: 18px;
+    }
+
+    .admin-walkin-page .uc-footer {
+        padding: 0 18px 18px;
     }
 
     .admin-walkin-page .uc-header {
@@ -2575,8 +2705,8 @@ table td {
     }
 
     .admin-walkin-page .uc-btn {
-        margin-top: 14px;
-        min-height: 38px;
+        margin-top: 0;
+        min-height: 40px;
     }
 }
 

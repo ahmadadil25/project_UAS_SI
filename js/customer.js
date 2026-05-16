@@ -13,6 +13,65 @@ function showToast(message) {
     setTimeout(() => { toast.classList.remove('show'); }, 3000);
 }
 
+function showAppDialog({ title = "Informasi", message = "", type = "info", confirmText = "Mengerti", cancelText = "Batal", showCancel = false } = {}) {
+    const modal = document.getElementById('appDialog');
+    const titleEl = document.getElementById('appDialogTitle');
+    const messageEl = document.getElementById('appDialogMessage');
+    const iconEl = document.getElementById('appDialogIcon');
+    const okBtn = document.getElementById('appDialogOk');
+    const cancelBtn = document.getElementById('appDialogCancel');
+
+    if (!modal || !titleEl || !messageEl || !okBtn || !cancelBtn) {
+        return Promise.resolve(!showCancel);
+    }
+
+    return new Promise(resolve => {
+        titleEl.innerText = title;
+        messageEl.innerText = message;
+        okBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        cancelBtn.style.display = showCancel ? 'inline-flex' : 'none';
+
+        iconEl.className = `app-dialog-icon ${type === 'danger' || type === 'success' ? type : ''}`;
+        iconEl.innerHTML = `<i data-lucide="${type === 'danger' ? 'alert-triangle' : type === 'success' ? 'check-circle' : 'info'}"></i>`;
+        lucide.createIcons();
+
+        const close = result => {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            modal.onclick = null;
+            resolve(result);
+        };
+
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        modal.onclick = event => {
+            if (event.target === modal && !showCancel) close(true);
+        };
+
+        modal.setAttribute('aria-hidden', 'false');
+        modal.classList.add('show');
+        okBtn.focus();
+    });
+}
+
+function showAppAlert(message, title = "Informasi", type = "info") {
+    return showAppDialog({ title, message, type, confirmText: "Mengerti" });
+}
+
+function showAppConfirm(message, title = "Konfirmasi", type = "danger") {
+    return showAppDialog({
+        title,
+        message,
+        type,
+        confirmText: "Ya, Lanjutkan",
+        cancelText: "Batal",
+        showCancel: true
+    });
+}
+
 // Fungsi pindah halaman (tanpa error event)
 function showSection(id) {
     // Sembunyikan semua section
@@ -291,10 +350,11 @@ function startCountdown(durationInMinutes) {
             if (display) display.textContent = "00:00";
             
             // Tampilkan alert singkat lalu arahkan ke halaman gagal
-            alert("Waktu pembayaran telah habis. Sesi booking Anda berakhir.");
-            
-            // Panggil fungsi yang sudah ada untuk menampilkan halaman gagal
-            showPaymentFailed();
+            showAppAlert(
+                "Waktu pembayaran telah habis. Sesi booking Anda berakhir.",
+                "Waktu Pembayaran Habis",
+                "danger"
+            ).then(() => showPaymentFailed());
         }
     }, 1000);
 }
@@ -302,7 +362,10 @@ function startCountdown(durationInMinutes) {
 async function handleReservation(e) {
     e.preventDefault();
     const unitId = document.getElementById('selectedUnitId').value;
-    if(!unitId) return alert("Pilih unit konsol terlebih dahulu.");
+    if(!unitId) {
+        await showAppAlert("Pilih unit konsol terlebih dahulu.", "Unit Belum Dipilih", "danger");
+        return;
+    }
 
     const playDate = document.getElementById('playDate').value;
     const startTimeStr = document.getElementById('startTime').value;
@@ -327,7 +390,11 @@ async function handleReservation(e) {
         .gt('end_time', startTime);
 
     if (conflictErr || (conflicts && conflicts.length > 0)) {
-        alert(`❌ MAAF! Unit pada jam tersebut sudah dipesan. Silakan cek rincian jadwal dan pilih jam lain.`);
+        await showAppAlert(
+            "Unit pada jam tersebut sudah dipesan. Silakan cek rincian jadwal dan pilih jam lain.",
+            "Jadwal Bentrok",
+            "danger"
+        );
         resetBtn(); return;
     }
 
@@ -431,7 +498,11 @@ async function processPayment(amountPaid, methodInfo) {
         .gt('end_time', tempReservationData.start_time);
 
     if (conflicts && conflicts.length > 0) {
-        alert("❌ YAH KEDULUAN! Saat Anda di halaman pembayaran, jadwal ini baru saja dibayar orang lain. Silakan pilih jadwal lain.");
+        await showAppAlert(
+            "Saat Anda berada di halaman pembayaran, jadwal ini baru saja dibayar orang lain. Silakan pilih jadwal lain.",
+            "Jadwal Sudah Terisi",
+            "danger"
+        );
         location.reload(); 
         return;
     }
@@ -557,13 +628,24 @@ async function checkReservation() {
     // Render as responsive Cards instead of Table
     let html = '<div class="reservation-cards-grid">';
     data.forEach(r => {
+        const startDateTime = getReservationStartDateTime(r);
+        const canCancel = r.reservation_status === 'paid' && startDateTime && new Date() < startDateTime;
+
         let btnStr = '';
-        if(r.reservation_status === 'paid') {
+        if(canCancel) {
             btnStr = `<button class="btn btn-danger-outline full-width" onclick='cancelReservation(${JSON.stringify(r)})'><i data-lucide="x-circle"></i> Batalkan Pesanan</button>`;
+        } else if (r.reservation_status === 'paid') {
+            btnStr = `<small class="text-muted">Reservasi tidak dapat dibatalkan setelah waktu bermain dimulai.</small>`;
         }
         
+        const statusLabels = {
+            paid: 'AKTIF / LUNAS',
+            refund: 'REFUND',
+            converted_to_credit: 'SALDO KREDIT'
+        };
+
         let statusBadge = r.reservation_status === 'paid' ? 'badge-success' : 'badge-gray';
-        let statusText = r.reservation_status === 'paid' ? 'AKTIF / LUNAS' : r.reservation_status.replace('_', ' ').toUpperCase();
+        let statusText = statusLabels[r.reservation_status] || r.reservation_status.replace('_', ' ').toUpperCase();
 
         html += `
         <div class="res-card">
@@ -573,7 +655,7 @@ async function checkReservation() {
             </div>
             <div class="res-card-body">
                 <div class="rc-row"><span>Unit Konsol</span><strong>${r.playstation_units.unit_code}</strong></div>
-                <div class="rc-row"><span>Jadwal Main</span><strong>${r.play_date} • ${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</strong></div>
+                <div class="rc-row"><span>Jadwal Main</span><strong>${r.play_date} | ${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</strong></div>
                 <div class="rc-row"><span>Total Bayar</span><strong class="text-blue">Rp ${r.total_price.toLocaleString()}</strong></div>
             </div>
             <div class="res-card-footer">${btnStr}</div>
@@ -584,20 +666,76 @@ async function checkReservation() {
     lucide.createIcons();
 }
 
+function getReservationStartDateTime(reservation) {
+    if (!reservation || !reservation.play_date || !reservation.start_time) return null;
+
+    // Ambil offset timezone lokal (misal WIB = "+07:00") agar tidak salah parsing ke UTC
+    const offsetMin = new Date().getTimezoneOffset();
+    const sign = offsetMin <= 0 ? '+' : '-';
+    const absMin = Math.abs(offsetMin);
+    const tzOffset = `${sign}${String(Math.floor(absMin / 60)).padStart(2, '0')}:${String(absMin % 60).padStart(2, '0')}`;
+
+    const timeStr = String(reservation.start_time).substring(0, 8); // HH:MM:SS
+    const date = new Date(`${reservation.play_date}T${timeStr}${tzOffset}`);
+
+    if (Number.isNaN(date.getTime())) return null;
+
+    return date;
+}
+
 async function cancelReservation(reservation) {
+    // Ambil ulang data dari server untuk memastikan tidak ada race condition
+    const { data: freshData, error: fetchErr } = await supabase
+        .from('reservations')
+        .select('*')
+        .eq('id', reservation.id)
+        .single();
+
+    if (fetchErr || !freshData) {
+        await showAppAlert("Gagal memverifikasi data reservasi. Silakan coba lagi.", "Tidak Bisa Dibatalkan", "danger");
+        return;
+    }
+
+    // Gunakan data terbaru dari server
+    reservation = freshData;
+
+    const playDateTime = getReservationStartDateTime(reservation);
+    const now = new Date();
+
+    if (!playDateTime) {
+        await showAppAlert("Jadwal reservasi tidak valid. Silakan hubungi admin.", "Tidak Bisa Dibatalkan", "danger");
+        return;
+    }
+
+    // Cek: jam bermain sudah dimulai atau sudah lewat
+    if (now >= playDateTime) {
+        await showAppAlert(
+            "Reservasi tidak dapat dibatalkan karena sesi bermain sudah dimulai atau sudah lewat.",
+            "Tidak Bisa Dibatalkan",
+            "danger"
+        );
+        checkReservation();
+        return;
+    }
+
+    // Cek: status sudah bukan 'paid' (misal sudah dibatalkan sebelumnya)
+    if (reservation.reservation_status !== 'paid') {
+        await showAppAlert("Reservasi ini sudah tidak aktif dan tidak dapat dibatalkan.", "Tidak Bisa Dibatalkan", "danger");
+        checkReservation();
+        return;
+    }
+
     const warningText = `Yakin ingin membatalkan reservasi ini?\n\nAturan pembatalan:\n- Minimal 1 jam sebelum jadwal: dana diproses sebagai refund manual.\n- Kurang dari 1 jam sebelum jadwal: nominal Rp ${reservation.total_price.toLocaleString()} diubah menjadi Saldo Kredit untuk pemesanan berikutnya.`;
     
-    if(!confirm(warningText)) return;
+    if(!await showAppConfirm(warningText, "Batalkan Reservasi?", "danger")) return;
 
-    const playDateTime = new Date(`${reservation.play_date}T${reservation.start_time}`);
-    const now = new Date();
     const diffHours = (playDateTime - now) / (1000 * 60 * 60);
 
     let newStatus = '';
     let message = '';
 
     if (diffHours >= 1) {
-        newStatus = 'cancelled_refund';
+        newStatus = 'refund';
         message = 'Pembatalan dilakukan minimal 1 jam sebelum jadwal. Dana akan di-refund secara manual oleh admin.';
     } else {
         newStatus = 'converted_to_credit';
@@ -611,7 +749,7 @@ async function cancelReservation(reservation) {
     }
 
     await supabase.from('reservations').update({ reservation_status: newStatus }).eq('id', reservation.id);
-    alert(message);
+    await showAppAlert(message, "Pembatalan Berhasil", "success");
     checkReservation(); 
 }
 

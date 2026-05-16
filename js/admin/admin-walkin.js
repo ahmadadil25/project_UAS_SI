@@ -8,7 +8,10 @@ async function loadWalkinUnits() {
         .select('*')
         .order('unit_code');
 
-    if (error) return alert("Gagal load unit!");
+    if (error) {
+        await adminAlert("Gagal memuat data unit.", "Gagal Load Unit");
+        return;
+    }
 
     window.adminState.unitsData = data || [];
 
@@ -27,22 +30,31 @@ async function loadWalkinUnits() {
             : 'CLASSIC SLOT';
 
         div.innerHTML = `
-            <div class="uc-header">
-                <span class="uc-type">${typeText}</span>
-                <div id="walkin-status-${unit.id}" class="uc-badge badge-gray">
-                    Memuat...
+            <div class="uc-clickable">
+                <div class="uc-header">
+                    <span class="uc-type">${typeText}</span>
+                    <div id="walkin-status-${unit.id}" class="uc-badge badge-gray">
+                        Memuat...
+                    </div>
+                </div>
+
+                <div class="uc-body">
+                    <h2 class="uc-code">${escapeWalkinHtml(unit.unit_code)}</h2>
+                    <div class="uc-price">
+                        Rp ${Number(unit.price_per_hour || 0).toLocaleString('id-ID')}
+                        <span>/jam</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="uc-body">
-                <h2 class="uc-code">${escapeWalkinHtml(unit.unit_code)}</h2>
-                <div class="uc-price">
-                    Rp ${Number(unit.price_per_hour || 0).toLocaleString('id-ID')}
-                    <span>/jam</span>
-                </div>
+            <div class="uc-footer">
+                <button
+                    type="button"
+                    class="uc-btn uc-btn-jadwal"
+                    onclick="openWalkinScheduleModal('${unit.id}', event)">
+                    Lihat Jadwal
+                </button>
             </div>
-
-            <button type="button" class="uc-btn">Pilih Unit Ini</button>
         `;
 
         div.onclick = () => {
@@ -70,17 +82,9 @@ function selectWalkinUnit(unit, cardElement) {
         .querySelectorAll('#walkinUnitContainer .unit-card')
         .forEach(card => {
             card.classList.remove('selected');
-
-            const btn = card.querySelector('.uc-btn');
-            if (btn) btn.innerText = 'Pilih Unit Ini';
         });
 
     cardElement.classList.add('selected');
-
-    const selectedBtn = cardElement.querySelector('.uc-btn');
-    if (selectedBtn) {
-        selectedBtn.innerText = 'Unit Terpilih';
-    }
 
     const selectedUnitId = document.getElementById('selectedUnitId');
     const selectedUnitPrice = document.getElementById('selectedUnitPrice');
@@ -101,9 +105,12 @@ async function checkWalkinUnitStatuses() {
         .from('reservations')
         .select('unit_id, start_time, end_time, reservation_status')
         .eq('play_date', playDate)
-        .eq('reservation_status', 'paid');
+        .eq('reservation_status', 'paid')
+        .order('start_time', { ascending: true });
 
     if (error) return console.error(error);
+
+    window.adminState.walkinBookingsData = data || [];
 
     const now = new Date();
     const todayStr = now.toLocaleDateString('en-CA');
@@ -143,6 +150,92 @@ async function checkWalkinUnitStatuses() {
     });
 }
 
+function ensureWalkinScheduleModalExists() {
+    if (document.getElementById('walkinScheduleModal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'walkinScheduleModal';
+    modal.className = 'modal-overlay walkin-schedule-modal';
+    modal.style.display = 'none';
+    modal.style.zIndex = '99999';
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="walkinScheduleModalTitle">Detail Jadwal</h3>
+                    <p class="modal-subtitle">Status ketersediaan berdasarkan tanggal walk-in</p>
+                </div>
+                <button type="button" class="close-btn" onclick="closeWalkinScheduleModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="walkinScheduleModalList" class="walkin-schedule-list"></div>
+                <button type="button" class="btn btn-primary full-width" onclick="closeWalkinScheduleModal()">
+                    Tutup & Lanjutkan
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', event => {
+        if (event.target === modal) {
+            closeWalkinScheduleModal();
+        }
+    });
+}
+
+async function openWalkinScheduleModal(unitId, event) {
+    if (event) event.stopPropagation();
+
+    ensureWalkinScheduleModalExists();
+
+    const unit = (window.adminState.unitsData || []).find(item => item.id === unitId);
+    if (!unit) return;
+
+    await checkWalkinUnitStatuses();
+
+    const modal = document.getElementById('walkinScheduleModal');
+    const title = document.getElementById('walkinScheduleModalTitle');
+    const list = document.getElementById('walkinScheduleModalList');
+
+    title.innerText = `Jadwal ${unit.unit_code}`;
+
+    const unitBookings = (window.adminState.walkinBookingsData || [])
+        .filter(reservation => reservation.unit_id === unit.id);
+
+    if (unitBookings.length === 0) {
+        list.innerHTML = `
+            <div class="walkin-schedule-empty">
+                <strong>Kosong seharian!</strong>
+                <span>Jam berapapun masih bebas dipakai.</span>
+            </div>
+        `;
+    } else {
+        list.innerHTML = unitBookings.map(booking => `
+            <div class="walkin-schedule-item">
+                <div class="walkin-schedule-icon">Jam</div>
+                <div class="walkin-schedule-text">
+                    <span>Terisi pada jam:</span>
+                    <strong>${String(booking.start_time || '').substring(0, 5)} - ${String(booking.end_time || '').substring(0, 5)}</strong>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    modal.style.display = 'flex';
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeWalkinScheduleModal() {
+    const modal = document.getElementById('walkinScheduleModal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
 function calculateWalkinPrice() {
     const price = Number(document.getElementById('selectedUnitPrice')?.value || 0);
     const duration = Number(document.getElementById('duration')?.value || 1);
@@ -172,7 +265,8 @@ async function handleWalkinReservation(e) {
     const unitId = document.getElementById('selectedUnitId')?.value;
 
     if (!unitId) {
-        return alert("Pilih unit PS terlebih dahulu!");
+        await adminAlert("Pilih unit PS terlebih dahulu.", "Unit Belum Dipilih");
+        return;
     }
 
     setWalkinButtonLoading(true);
@@ -186,14 +280,14 @@ async function handleWalkinReservation(e) {
         const totalPrice = Number(window.adminState.walkinTotal || 0);
 
         if (!customerName || !customerPhone || !playDate || !startTimeStr || !duration) {
-            alert("Lengkapi semua data reservasi walk-in terlebih dahulu.");
             setWalkinButtonLoading(false);
+            await adminAlert("Lengkapi semua data reservasi walk-in terlebih dahulu.", "Data Belum Lengkap");
             return;
         }
 
         if (totalPrice <= 0) {
-            alert("Total tagihan belum valid. Pilih unit PS terlebih dahulu.");
             setWalkinButtonLoading(false);
+            await adminAlert("Total tagihan belum valid. Pilih unit PS terlebih dahulu.", "Total Belum Valid");
             return;
         }
 
@@ -228,20 +322,21 @@ async function handleWalkinReservation(e) {
             .single();
 
         if (reservationError) {
-            alert("Error: " + reservationError.message);
             setWalkinButtonLoading(false);
+            await adminAlert("Error: " + reservationError.message, "Gagal Membuat Reservasi");
             return;
         }
 
         const paymentCreated = await createWalkinPayment(insertedReservation, totalPrice);
 
         if (!paymentCreated) {
-            alert(
+            await adminAlert(
                 "Reservasi walk-in berhasil dibuat, tetapi data pembayaran gagal dicatat. " +
-                "Silakan cek tabel payments atau input pembayaran secara manual."
+                "Silakan cek tabel payments atau input pembayaran secara manual.",
+                "Pembayaran Belum Tercatat"
             );
         } else {
-            alert("✅ Reservasi Walk-in Berhasil dan Pembayaran Tercatat!");
+            await adminAlert("Reservasi walk-in berhasil dan pembayaran tercatat.", "Berhasil");
         }
 
         resetWalkinForm();
@@ -264,7 +359,8 @@ async function handleWalkinReservation(e) {
 
     } catch (err) {
         console.error(err);
-        alert(err.message || "Terjadi kesalahan saat membuat reservasi walk-in.");
+        setWalkinButtonLoading(false);
+        await adminAlert(err.message || "Terjadi kesalahan saat membuat reservasi walk-in.", "Terjadi Kesalahan");
     } finally {
         setWalkinButtonLoading(false);
     }
@@ -281,11 +377,13 @@ async function checkWalkinConflict(unitId, playDate, startTime, endTime) {
         .gt('end_time', startTime);
 
     if (conflictErr) {
-        alert("Gagal mengecek jadwal: " + conflictErr.message);
+        setWalkinButtonLoading(false);
+        await adminAlert("Gagal mengecek jadwal: " + conflictErr.message, "Gagal Cek Jadwal");
         return true;
     }
 
     if (conflicts && conflicts.length > 0) {
+        setWalkinButtonLoading(false);
         const jadwalBentrok = conflicts
             .map(reservation => {
                 const statusLabel = 'Paid';
@@ -294,10 +392,11 @@ async function checkWalkinConflict(unitId, playDate, startTime, endTime) {
             })
             .join('\n');
 
-        alert(
-            `❌ Jadwal bentrok!\n\n` +
-            `Unit ini sudah terisi pada jadwal berikut:\n${jadwalBentrok}\n\n` +
-            `Silakan pilih jam atau unit lain.`
+        await adminAlert(
+            `Jadwal bentrok!` + "\n\n" +
+            `Unit ini sudah terisi pada jadwal berikut:` + "\n" + jadwalBentrok + "\n\n" +
+            `Silakan pilih jam atau unit lain.`,
+            "Jadwal Bentrok"
         );
 
         return true;
@@ -363,9 +462,6 @@ function resetWalkinForm() {
 
     document.querySelectorAll('#walkinUnitContainer .unit-card').forEach(card => {
         card.classList.remove('selected');
-
-        const btn = card.querySelector('.uc-btn');
-        if (btn) btn.innerText = 'Pilih Unit Ini';
     });
 
     const selectedUnitId = document.getElementById('selectedUnitId');
@@ -430,3 +526,5 @@ window.loadWalkinUnits = loadWalkinUnits;
 window.checkWalkinUnitStatuses = checkWalkinUnitStatuses;
 window.calculateWalkinPrice = calculateWalkinPrice;
 window.handleWalkinReservation = handleWalkinReservation;
+window.openWalkinScheduleModal = openWalkinScheduleModal;
+window.closeWalkinScheduleModal = closeWalkinScheduleModal;

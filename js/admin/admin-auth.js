@@ -6,11 +6,15 @@ async function handleLogin(e) {
         email: document.getElementById('adminEmail').value,
         password: document.getElementById('adminPass').value
     });
-    if (error) alert("Login Gagal: " + error.message);
-    else location.reload();
+    if (error) {
+        await adminAlert("Login gagal: " + error.message, "Login Gagal");
+    } else {
+        location.reload();
+    }
 }
 
 function handleLogout() {
+    localStorage.removeItem(window.ADMIN_ACTIVE_TAB_KEY || 'pshubAdminActiveTab');
     supabase.auth.signOut().then(() => location.reload());
 }
 

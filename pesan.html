@@ -344,6 +344,20 @@
         </div>
     </div>
 
+    <div id="appDialog" class="modal-overlay app-dialog-overlay" aria-hidden="true">
+        <div class="modal-content app-dialog-content" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
+            <div id="appDialogIcon" class="app-dialog-icon">
+                <i data-lucide="info"></i>
+            </div>
+            <h3 id="appDialogTitle">Informasi</h3>
+            <p id="appDialogMessage"></p>
+            <div class="app-dialog-actions">
+                <button type="button" id="appDialogCancel" class="btn btn-outline">Batal</button>
+                <button type="button" id="appDialogOk" class="btn btn-primary">Mengerti</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast">Kode disalin!</div>
 
     <script src="/api/config.js"></script>

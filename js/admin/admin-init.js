@@ -2,11 +2,26 @@
 // File utama untuk inisialisasi halaman admin.
 
 window.onload = async () => {
+    // Sembunyikan semua tab lebih awal agar tidak ada flash saat restore tab
+    const ALL_TABS = ['dashboardTab', 'reservasiTab', 'walkinTab', 'paymentTab', 'kreditTab', 'laporanTab'];
+    ALL_TABS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'flex';
+
+        // Langsung tampilkan tab yang tersimpan SEBELUM data di-load
+        // agar tidak ada "flash" ke dashboard saat refresh
+        const savedTab = typeof getSavedAdminTab === 'function'
+            ? getSavedAdminTab()
+            : 'dashboardTab';
+        const savedBtn = window.ADMIN_TAB_BUTTON_MAP?.[savedTab] || 'btn-dash';
+        switchTab(savedTab, savedBtn, { save: false });
 
         initAdmin();
     }
@@ -31,8 +46,8 @@ async function initAdmin() {
         loadLaporanByDate();
     }
 
-    // Saat masuk admin, langsung tampilkan tab Data Reservasi
-    switchTab('reservasiTab', 'btn-res');
+    // switchTab sudah dipanggil lebih awal di window.onload
+    // agar tab langsung tampil tanpa flash ke dashboard
 }
 
 function getTodayDateString() {

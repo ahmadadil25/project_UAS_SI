@@ -214,10 +214,10 @@ function renderLaporan(rows, date) {
 
                         <tr style="background:#fff7ed; font-weight:700;">
                             <td colspan="7" style="padding:8px; border:1px solid #e2e8f0;">
-                                Total Pembatalan No Refund
+                                Total Refund
                             </td>
                             <td colspan="2" style="padding:8px; border:1px solid #e2e8f0;">
-                                Rp ${summary.totalNoRefund.toLocaleString('id-ID')}
+                                Rp ${summary.totalRefund.toLocaleString('id-ID')}
                             </td>
                         </tr>
 
@@ -238,7 +238,7 @@ function renderLaporan(rows, date) {
                                 Pending: ${summary.pendingCount} |
                                 Paid: ${summary.paidCount} |
                                 Finished: ${summary.finishedCount} |
-                                No Refund: ${summary.noRefundCount} |
+                                Refund: ${summary.refundCount} |
                                 Credit: ${summary.creditCount}
                             </td>
                         </tr>
@@ -257,12 +257,12 @@ function calculateLaporanSummary(rows) {
         totalReservasiValue: 0,
         totalPembayaran: 0,
         totalPendapatan: 0,
-        totalNoRefund: 0,
+        totalRefund: 0,
         totalCredit: 0,
         pendingCount: 0,
         paidCount: 0,
         finishedCount: 0,
-        noRefundCount: 0,
+        refundCount: 0,
         creditCount: 0
     };
 
@@ -288,9 +288,9 @@ function calculateLaporanSummary(rows) {
             summary.totalPendapatan += totalPrice;
         }
 
-        if (status === 'cancelled_no_refund') {
-            summary.noRefundCount++;
-            summary.totalNoRefund += totalPrice;
+        if (status === 'cancelled_refund') {
+            summary.refundCount++;
+            summary.totalRefund += totalPrice;
         }
 
         if (status === 'converted_to_credit') {
@@ -395,8 +395,7 @@ function getLaporanStatusLabel(status) {
     const labels = {
         paid: 'Paid',
         finished: 'Finished',
-        cancelled_no_refund: 'No Refund',
-        cancelled_refund: 'Refund Lama',
+        cancelled_refund: 'Refund',
         converted_to_credit: 'Credit'
     };
 
@@ -408,7 +407,7 @@ function getLaporanStatusBadge(status) {
         return 'badge-paid';
     }
 
-    if (status === 'cancelled_no_refund' || status === 'cancelled_refund' || status === 'converted_to_credit') {
+    if (status === 'cancelled_refund' || status === 'converted_to_credit') {
         return 'badge-cancelled';
     }
 

@@ -161,7 +161,7 @@ async function updateDashboardSummary(data) {
     let revenue = 0;
     let pendingCount = 0;
     let finishedCount = 0;
-    let noRefundCount = 0;
+    let refundCount = 0;
     let creditCount = 0;
 
     const activeUnitIds = new Set();
@@ -186,7 +186,7 @@ async function updateDashboardSummary(data) {
 
             if (r.reservation_status === 'pending_payment') pendingCount++;
             if (r.reservation_status === 'finished') finishedCount++;
-            if (r.reservation_status === 'cancelled_no_refund') noRefundCount++;
+            if (r.reservation_status === 'cancelled_refund') refundCount++;
             if (r.reservation_status === 'converted_to_credit') creditCount++;
         }
     });
@@ -196,7 +196,6 @@ async function updateDashboardSummary(data) {
     const todayPendingCount = document.getElementById('todayPendingCount');
     const todayFinishedCount = document.getElementById('todayFinishedCount');
     const todayRefundCount = document.getElementById('todayRefundCount');
-    const todayNoRefundCount = document.getElementById('todayNoRefundCount');
     const todayCreditCount = document.getElementById('todayCreditCount');
     const todayTrendText = document.getElementById('todayTrendText');
 
@@ -204,8 +203,7 @@ async function updateDashboardSummary(data) {
     if (todayRevenue) todayRevenue.innerText = `Rp ${revenue.toLocaleString('id-ID')}`;
     if (todayPendingCount) todayPendingCount.innerText = pendingCount;
     if (todayFinishedCount) todayFinishedCount.innerText = finishedCount;
-    if (todayRefundCount) todayRefundCount.innerText = noRefundCount;
-    if (todayNoRefundCount) todayNoRefundCount.innerText = noRefundCount;
+    if (todayRefundCount) todayRefundCount.innerText = refundCount;
     if (todayCreditCount) todayCreditCount.innerText = creditCount;
 
     if (todayTrendText) {
@@ -294,8 +292,7 @@ function getStatusLabel(status) {
         pending_payment: 'Pending',
         paid: 'Paid',
         finished: 'Finished',
-        cancelled_no_refund: 'No Refund',
-        cancelled_refund: 'Refund Lama',
+        cancelled_refund: 'Refund',
         converted_to_credit: 'Credit'
     };
 
@@ -307,7 +304,7 @@ function getStatusBadgeClass(status) {
         return 'badge-paid';
     }
 
-    if (status === 'cancelled_no_refund' || status === 'cancelled_refund' || status === 'converted_to_credit') {
+    if (status === 'cancelled_refund' || status === 'converted_to_credit') {
         return 'badge-cancelled';
     }
 
@@ -475,9 +472,8 @@ function ensureStatusModalExists() {
                     <select id="editReservationStatus" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                         <option value="paid">Paid</option>
                         <option value="finished">Finished</option>
-                        <option value="cancelled_no_refund">Cancelled No Refund</option>
+                        <option value="cancelled_refund">Cancelled Refund</option>
                         <option value="converted_to_credit">Converted to Credit</option>
-                        <option value="cancelled_refund" disabled>Refund Lama</option>
                     </select>
                 </div>
 
@@ -575,29 +571,6 @@ async function submitStatusChange() {
     }
 }
 
-function isReservationStatusConstraintError(error) {
-    if (!error) return false;
-
-    const message = String(error.message || '').toLowerCase();
-    const details = String(error.details || '').toLowerCase();
-    const hint = String(error.hint || '').toLowerCase();
-
-    return (
-        error.code === '23514' ||
-        message.includes('check constraint') ||
-        details.includes('reservation_status') ||
-        hint.includes('reservation_status')
-    );
-}
-
-function getNoRefundStatusConstraintMessage() {
-    return (
-        "Status cancelled_no_refund belum ada di constraint Supabase.\n\n" +
-        "Tambahkan nilai cancelled_no_refund ke constraint reservation_status, lalu ulangi perubahan status.\n\n" +
-        "Data reservasi belum diubah dan saldo kredit tidak dibuat."
-    );
-}
-
 async function updateStatus(id, status) {
     try {
         const reservation = await getReservationById(id);
@@ -628,16 +601,16 @@ async function updateStatus(id, status) {
             }
         }
 
-        if (status === 'cancelled_no_refund') {
-            const confirmNoRefund = confirm(
-                `Yakin ingin mengubah reservasi ini menjadi Cancelled No Refund?\n\n` +
+        if (status === 'cancelled_refund') {
+            const confirmRefund = confirm(
+                `Yakin ingin mengubah reservasi ini menjadi Cancelled Refund?\n\n` +
                 `Booking : ${reservation.booking_code}\n` +
                 `Nama    : ${reservation.customer_name}\n` +
                 `Nominal : Rp ${Number(reservation.total_price || 0).toLocaleString()}\n\n` +
-                `Status ini menandakan reservasi dibatalkan dan pembayaran tidak dapat dikembalikan. Saldo kredit tidak akan dibuat.`
+                `Status ini menandakan dana perlu dikembalikan secara manual.`
             );
 
-            if (!confirmNoRefund) {
+            if (!confirmRefund) {
                 return false;
             }
         }
@@ -648,12 +621,6 @@ async function updateStatus(id, status) {
             .eq('id', id);
 
         if (error) {
-            if (status === 'cancelled_no_refund' && isReservationStatusConstraintError(error)) {
-                alert(getNoRefundStatusConstraintMessage());
-                await loadAdminData();
-                return false;
-            }
-
             alert("Gagal update status: " + error.message);
             await loadAdminData();
             return false;
@@ -916,16 +883,10 @@ function getDashboardStatusInfo(status) {
             sub: 'Done',
             subClass: 'neutral'
         },
-        cancelled_no_refund: {
-            main: 'No Refund',
-            mainClass: 'danger',
-            sub: 'Hangus',
-            subClass: 'neutral'
-        },
         cancelled_refund: {
-            main: 'Refund Lama',
+            main: 'Refund',
             mainClass: 'danger',
-            sub: 'Legacy',
+            sub: 'Manual',
             subClass: 'neutral'
         },
         converted_to_credit: {

@@ -300,8 +300,7 @@ function getPaymentReservationLabel(status) {
     const labels = {
         paid: 'Paid',
         finished: 'Finished',
-        cancelled_no_refund: 'No Refund',
-        cancelled_refund: 'Refund Lama',
+        cancelled_refund: 'Refund',
         converted_to_credit: 'Credit'
     };
 
@@ -313,7 +312,7 @@ function getPaymentReservationBadge(status) {
         return 'badge-paid';
     }
 
-    if (status === 'cancelled_no_refund' || status === 'cancelled_refund' || status === 'converted_to_credit') {
+    if (status === 'cancelled_refund' || status === 'converted_to_credit') {
         return 'badge-cancelled';
     }
 

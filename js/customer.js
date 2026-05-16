@@ -562,6 +562,162 @@ async function checkReservation() {
             btnStr = `<button class="btn btn-danger-outline full-width" onclick='cancelReservation(${JSON.stringify(r)})'><i data-lucide="x-circle"></i> Batalkan Pesanan</button>`;
         }
         
+<<<<<<< HEAD
+        let statusBadge = getCustomerReservationBadgeClass(r.reservation_status);
+
+        html += `<tr>
+            <td><strong>${r.booking_code}</strong></td>
+            <td>${r.playstation_units.unit_code}</td>
+            <td><small>${r.play_date}<br>${r.start_time.substring(0,5)} - ${r.end_time.substring(0,5)}</small></td>
+            <td>Rp ${r.total_price.toLocaleString()}</td>
+            <td><span class="badge ${statusBadge}">${getCustomerReservationStatusLabel(r.reservation_status)}</span></td>
+            <td>${btnStr}</td>
+        </tr>`;
+    });
+    html += '</table>';
+    resultDiv.innerHTML = html;
+}
+
+function getCustomerReservationStatusLabel(status) {
+    const labels = {
+        paid: 'Paid',
+        finished: 'Finished',
+        converted_to_credit: 'Credit',
+        cancelled_no_refund: 'No Refund',
+        cancelled_refund: 'Refund Lama'
+    };
+
+    return labels[status] || status || '-';
+}
+
+function getCustomerReservationBadgeClass(status) {
+    if (status === 'paid' || status === 'finished') {
+        return 'badge-success';
+    }
+
+    return 'badge-gray';
+}
+
+function buildReservationDateTime(dateValue, timeValue) {
+    if (!dateValue || !timeValue) return null;
+
+    const dateParts = String(dateValue).split('-').map(Number);
+    const timeParts = String(timeValue).split(':').map(Number);
+
+    if (dateParts.length < 3 || timeParts.length < 2) return null;
+
+    return new Date(
+        dateParts[0],
+        dateParts[1] - 1,
+        dateParts[2],
+        timeParts[0] || 0,
+        timeParts[1] || 0,
+        timeParts[2] || 0
+    );
+}
+
+function isReservationStatusConstraintError(error) {
+    if (!error) return false;
+
+    const message = String(error.message || '').toLowerCase();
+    const details = String(error.details || '').toLowerCase();
+    const hint = String(error.hint || '').toLowerCase();
+
+    return (
+        error.code === '23514' ||
+        message.includes('check constraint') ||
+        details.includes('reservation_status') ||
+        hint.includes('reservation_status')
+    );
+}
+
+function getNoRefundStatusConstraintMessage() {
+    return (
+        "Status cancelled_no_refund belum bisa disimpan di database.\n\n" +
+        "Tambahkan nilai cancelled_no_refund ke constraint reservation_status di Supabase, lalu coba batalkan lagi.\n\n" +
+        "Reservasi belum diubah dan saldo kredit tidak dibuat."
+    );
+}
+
+async function createCreditFromCancellation(reservation) {
+    const { data: existingCredit, error: checkError } = await supabase
+        .from('credits')
+        .select('id')
+        .eq('reservation_id', reservation.id)
+        .limit(1);
+
+    if (checkError) {
+        throw new Error("Gagal mengecek saldo kredit: " + checkError.message);
+    }
+
+    if (existingCredit && existingCredit.length > 0) {
+        return;
+    }
+
+    const { error: creditError } = await supabase.from('credits').insert([{
+        reservation_id: reservation.id,
+        phone: reservation.phone,
+        amount: reservation.total_price,
+        credit_status: 'unused'
+    }]);
+
+    if (creditError) {
+        throw new Error("Gagal membuat saldo kredit: " + creditError.message);
+    }
+}
+
+async function cancelReservation(reservation) {
+    const warningText = "Yakin ingin membatalkan reservasi ini?\n\n" +
+        "Jika pembatalan dilakukan lebih dari 1 jam sebelum jadwal main, pembayaran yang sudah dilakukan akan disimpan sebagai saldo kredit untuk pemesanan berikutnya.\n\n" +
+        "Jika pembatalan dilakukan kurang dari 1 jam sebelum jadwal main, pembayaran tidak dapat dikembalikan.";
+
+    if(!confirm(warningText)) return;
+
+    const playDateTime = buildReservationDateTime(reservation.play_date, reservation.start_time);
+    const now = new Date();
+
+    if (!playDateTime || Number.isNaN(playDateTime.getTime())) {
+        alert("Jadwal reservasi tidak valid, pembatalan dibatalkan.");
+        return;
+    }
+
+    const diffHours = (playDateTime - now) / (1000 * 60 * 60);
+
+    let newStatus = '';
+    let message = '';
+
+    try {
+        if (diffHours > 1) {
+            newStatus = 'converted_to_credit';
+            message = `Reservasi dibatalkan.\nNominal Rp ${Number(reservation.total_price || 0).toLocaleString()} berhasil disimpan sebagai saldo kredit untuk pemesanan berikutnya.\n\nGunakan Nama dan No HP yang sama untuk memakai saldo ini.`;
+            await createCreditFromCancellation(reservation);
+        } else {
+            newStatus = 'cancelled_no_refund';
+            message = 'Reservasi dibatalkan. Pembayaran tidak dapat dikembalikan karena pembatalan dilakukan kurang dari atau sama dengan 1 jam sebelum jadwal main.';
+        }
+
+        const { error: updateError } = await supabase
+            .from('reservations')
+            .update({ reservation_status: newStatus })
+            .eq('id', reservation.id);
+
+        if (updateError) {
+            if (newStatus === 'cancelled_no_refund' && isReservationStatusConstraintError(updateError)) {
+                alert(getNoRefundStatusConstraintMessage());
+                return;
+            }
+
+            throw new Error("Gagal membatalkan reservasi: " + updateError.message);
+        }
+
+        alert(message);
+        checkReservation();
+    } catch (err) {
+        console.error(err);
+        alert(err.message || "Terjadi kesalahan saat membatalkan reservasi.");
+    }
+}
+=======
         let statusBadge = r.reservation_status === 'paid' ? 'badge-success' : 'badge-gray';
         let statusText = r.reservation_status === 'paid' ? 'AKTIF / LUNAS' : r.reservation_status.replace('_', ' ').toUpperCase();
 
@@ -609,6 +765,7 @@ async function cancelReservation(reservation) {
     alert(message);
     checkReservation(); 
 }
+>>>>>>> dc8fc890925e50fa61b16c09bd00052f47cef121
 
 // Realtime Listener
 supabase.channel('public:reservations')

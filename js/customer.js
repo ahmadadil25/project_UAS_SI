@@ -585,7 +585,7 @@ async function checkReservation() {
 }
 
 async function cancelReservation(reservation) {
-    const warningText = `Yakin ingin membatalkan reservasi ini?\n\nPERINGATAN: Jika dibatalkan lebih dari 1 jam sebelum main, nominal Rp ${reservation.total_price.toLocaleString()} akan diubah menjadi Saldo Kredit untuk pemesanan berikutnya.`;
+    const warningText = `Yakin ingin membatalkan reservasi ini?\n\nAturan pembatalan:\n- Minimal 1 jam sebelum jadwal: dana diproses sebagai refund manual.\n- Kurang dari 1 jam sebelum jadwal: nominal Rp ${reservation.total_price.toLocaleString()} diubah menjadi Saldo Kredit untuk pemesanan berikutnya.`;
     
     if(!confirm(warningText)) return;
 
@@ -596,13 +596,18 @@ async function cancelReservation(reservation) {
     let newStatus = '';
     let message = '';
 
-    if (diffHours <= 1) {
+    if (diffHours >= 1) {
         newStatus = 'cancelled_refund';
-        message = 'Reservasi dibatalkan. Dana akan di-refund secara manual oleh admin.';
+        message = 'Pembatalan dilakukan minimal 1 jam sebelum jadwal. Dana akan di-refund secara manual oleh admin.';
     } else {
         newStatus = 'converted_to_credit';
-        message = `Pembatalan dilakukan lebih dari 1 jam.\nNominal Rp ${reservation.total_price.toLocaleString()} diubah menjadi Saldo Kredit!\n\nGunakan No HP yang sama untuk memakai saldo ini.`;
-        await supabase.from('credits').insert([{ reservation_id: reservation.id, phone: reservation.phone, amount: reservation.total_price }]);
+        message = `Pembatalan dilakukan kurang dari 1 jam sebelum jadwal.\nNominal Rp ${reservation.total_price.toLocaleString()} diubah menjadi Saldo Kredit!\n\nGunakan No HP yang sama untuk memakai saldo ini.`;
+        await supabase.from('credits').insert([{
+            reservation_id: reservation.id,
+            phone: reservation.phone,
+            amount: reservation.total_price,
+            credit_status: 'unused'
+        }]);
     }
 
     await supabase.from('reservations').update({ reservation_status: newStatus }).eq('id', reservation.id);
